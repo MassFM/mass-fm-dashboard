@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Kajian } from '@/types/database';
+import { Kajian, TroubleReport, ProgramQuestion } from '@/types/database';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -12,6 +12,16 @@ export interface Database {
         Row: Kajian;
         Insert: Kajian;
         Update: Partial<Kajian>;
+      };
+      trouble_reports: {
+        Row: TroubleReport;
+        Insert: TroubleReport;
+        Update: Partial<TroubleReport>;
+      };
+      program_questions: {
+        Row: ProgramQuestion;
+        Insert: ProgramQuestion;
+        Update: Partial<ProgramQuestion>;
       };
     };
   };

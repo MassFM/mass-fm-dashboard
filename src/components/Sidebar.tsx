@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-// Menambahkan MessageSquare untuk ikon feedback
-import { Calendar, Image as ImageIcon, Heart, LogOut, Radio, MessageSquare } from 'lucide-react';
+import { Calendar, Image as ImageIcon, Heart, LogOut, Radio, MessageSquare, MessageCircleQuestion, Headphones, BarChart3, Bell, MapPin, Settings, MessageSquareDashed, MessageCircle, BookOpen, CalendarClock, AlertTriangle, Share2, MessageSquareText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -11,8 +10,20 @@ const menuItems = [
   { name: 'Kelola Jadwal', href: '/dashboard/jadwal', icon: Calendar },
   { name: 'Upload Poster', href: '/dashboard/poster', icon: ImageIcon },
   { name: 'Data Donasi', href: '/dashboard/donasi', icon: Heart },
-  // Menambahkan menu Kritik & Saran ke dalam daftar
   { name: 'Kritik & Saran', href: '/dashboard/feedback', icon: MessageSquare },
+  { name: 'Tanya Ustadz', href: '/dashboard/questions', icon: MessageCircleQuestion },
+  { name: 'Podcast', href: '/dashboard/podcast', icon: Headphones },
+  { name: 'Kajian Offline', href: '/dashboard/kajian-offline', icon: MapPin },
+  { name: 'Statistik', href: '/dashboard/statistik', icon: BarChart3 },
+  { name: 'Notifikasi', href: '/dashboard/notifications', icon: Bell },
+  { name: 'Auto Notifikasi', href: '/dashboard/notifications/settings', icon: Settings },
+  { name: 'Notif Terjadwal', href: '/dashboard/notifications/scheduled', icon: CalendarClock },
+  { name: 'Popup Info', href: '/dashboard/popups', icon: MessageSquareDashed },
+  { name: 'Live Chat', href: '/dashboard/chat', icon: MessageCircle },
+  { name: 'Doa Harian', href: '/dashboard/doa', icon: BookOpen },
+  { name: 'Laporan Gangguan', href: '/dashboard/trouble-reports', icon: AlertTriangle },
+  { name: 'Pertanyaan Program', href: '/dashboard/program-questions', icon: MessageSquareText },
+  { name: 'Share Settings', href: '/dashboard/share-settings', icon: Share2 },
 ];
 
 export default function Sidebar() {
@@ -25,7 +36,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 min-h-screen bg-white border-r border-slate-100 flex flex-col">
+    <aside className="w-64 min-h-screen bg-white border-r border-slate-100 flex flex-col fixed left-0 top-0 h-full z-10">
       {/* Logo & Nama Radio */}
       <div className="p-6 flex items-center gap-3">
         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white">
@@ -38,9 +49,10 @@ export default function Sidebar() {
       </div>
 
       {/* Menu Navigasi */}
-      <nav className="flex-1 px-4 space-y-1 mt-4">
+      <nav className="flex-1 px-4 space-y-1 mt-4 overflow-y-auto">
         {menuItems.map((item) => {
-          const isActive = pathname === item.href;
+          // Logic agar submenu aktif jika URL diawali href menu tersebut
+          const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
           return (
             <Link
               key={item.name}

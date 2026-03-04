@@ -21,12 +21,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
-      <body className={`${inter.variable} ${montserrat.variable} font-sans bg-slate-50 text-slate-900`}>
-        {children}
-        <head>
-        {/* Tambahkan link ini agar ikon muncul */}
+      <head>
+        {/* Link Material Icons */}
         <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" />
       </head>
+      <body className={`${inter.variable} ${montserrat.variable} font-sans bg-slate-50 text-slate-900`}>
+        {children}
       </body>
     </html>
   );

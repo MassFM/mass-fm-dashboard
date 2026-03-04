@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Kajian } from '@/types/database';
 import { useRouter } from 'next/navigation';
@@ -13,6 +13,7 @@ export default function KelolaJadwal() {
   const [schedules, setSchedules] = useState<Kajian[]>([]);
   const [loading, setLoading] = useState(true);
   const [isJingleMode, setIsJingleMode] = useState(false);
+  const [liveProgramId, setLiveProgramId] = useState<number | null>(null);
 
   // --- STATE NAVIGASI HARI ---
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -23,12 +24,24 @@ export default function KelolaJadwal() {
   const [program, setProgram] = useState('');
   const [pemateri, setPemateri] = useState('');
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+  const [description, setDescription] = useState('');
+  const [isRelay, setIsRelay] = useState(false);
+  const [kitabName, setKitabName] = useState('');
+  const [fileUrl, setFileUrl] = useState('');
   
   const [jamMulai, setJamMulai] = useState('08:00');
   const [jamSelesai, setJamSelesai] = useState('09:00');
 
   // --- STATE TANGGAL KHUSUS IMPOR ---
   const [importDate, setImportDate] = useState(''); 
+
+  // --- STATE KALENDER ---
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [calMonth, setCalMonth] = useState(new Date().getMonth());
+  const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [calSchedules, setCalSchedules] = useState<Record<string, Kajian[]>>({});
+  const [calPopupDate, setCalPopupDate] = useState<string | null>(null);
+  const [calPopupData, setCalPopupData] = useState<Kajian[]>([]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -56,7 +69,41 @@ export default function KelolaJadwal() {
 
   const fetchSettings = async () => {
     const { data } = await supabase.from('app_settings').select('*').single();
-    if (data) setIsJingleMode(data.is_jingle_mode);
+    if (data) {
+      setIsJingleMode(data.is_jingle_mode);
+      setLiveProgramId(data.live_program_id || null);
+    }
+  };
+
+  // --- FETCH JADWAL BULAN INI UNTUK KALENDER ---
+  const fetchCalendarSchedules = useCallback(async () => {
+    const startDate = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(calYear, calMonth + 1, 0).getDate();
+    const endDate = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    const { data } = await supabase
+      .from('schedules')
+      .select('*')
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('jam', { ascending: true });
+    if (data) {
+      const grouped: Record<string, Kajian[]> = {};
+      data.forEach((s: Kajian) => {
+        const d = s.date || '';
+        if (!grouped[d]) grouped[d] = [];
+        grouped[d].push(s);
+      });
+      setCalSchedules(grouped);
+    }
+  }, [calMonth, calYear]);
+
+  useEffect(() => {
+    if (viewMode === 'calendar') fetchCalendarSchedules();
+  }, [viewMode, calMonth, calYear, fetchCalendarSchedules]);
+
+  const openCalPopup = (dateStr: string) => {
+    setCalPopupDate(dateStr);
+    setCalPopupData(calSchedules[dateStr] || []);
   };
 
   // --- FUNGSI EXPORT PDF ---
@@ -103,18 +150,17 @@ export default function KelolaJadwal() {
   };
 
   const toggleJingleMode = async (status: boolean) => {
-    // 1. Ambil data settings terlebih dahulu untuk mendapatkan ID-nya
     const { data: settings } = await supabase.from('app_settings').select('id').single();
   
     if (settings) {
-      // 2. Jalankan update berdasarkan ID yang ditemukan
       const { error } = await supabase
         .from('app_settings')
-        .update({ is_jingle_mode: status, updated_at: new Date() })
-        .eq('id', settings.id); // Otomatis menggunakan ID yang ada di database
+        .update({ is_jingle_mode: status, live_program_id: null, updated_at: new Date() })
+        .eq('id', settings.id);
   
       if (!error) {
         setIsJingleMode(status);
+        setLiveProgramId(null);
         alert(status ? "Mode Jingle Aktif" : "Mode Live Aktif");
       } else {
         console.error("Gagal update mode:", error.message);
@@ -125,12 +171,31 @@ export default function KelolaJadwal() {
     }
   };
 
+  const lockLiveProgram = async (programId: number | null) => {
+    const { data: settings } = await supabase.from('app_settings').select('id').single();
+    if (settings) {
+      const { error } = await supabase
+        .from('app_settings')
+        .update({ live_program_id: programId, is_jingle_mode: false, updated_at: new Date() })
+        .eq('id', settings.id);
+      if (!error) {
+        setLiveProgramId(programId);
+        setIsJingleMode(false);
+        alert(programId ? 'Program dikunci sebagai LIVE!' : 'Lock program dilepas, kembali ke mode otomatis.');
+      }
+    }
+  };
+
   const handleEdit = (item: Kajian) => {
     setEditingId(item.id);
     setJudul(item.judul);
     setProgram(item.program);
     setPemateri(item.pemateri);
     setFormDate(item.date || new Date().toISOString().split('T')[0]);
+    setDescription((item as any).description || '');
+    setIsRelay((item as any).is_relay || false);
+    setKitabName((item as any).kitab_name || '');
+    setFileUrl((item as any).file_url || '');
     
     const splitJam = item.jam.split(' - ');
     if (splitJam.length === 2) {
@@ -145,12 +210,19 @@ export default function KelolaJadwal() {
     setJudul(''); setProgram(''); setPemateri('');
     setJamMulai('08:00'); setJamSelesai('09:00');
     setFormDate(new Date().toISOString().split('T')[0]);
+    setDescription(''); setIsRelay(false); setKitabName(''); setFileUrl('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const fullJam = `${jamMulai} - ${jamSelesai}`;
-    const payload = { judul, program, pemateri, jam: fullJam, date: formDate };
+    const payload = {
+      judul, program, pemateri, jam: fullJam, date: formDate,
+      description: description.trim(),
+      is_relay: isRelay,
+      kitab_name: kitabName.trim(),
+      file_url: fileUrl.trim(),
+    };
 
     let error;
     if (editingId) {
@@ -239,7 +311,7 @@ export default function KelolaJadwal() {
       </div>
       
       {/* 1. KONTROL JINGLE/LIVE */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <button onClick={() => toggleJingleMode(true)} className={`p-8 rounded-3xl border-2 transition-all text-left ${isJingleMode ? 'border-orange-500 bg-orange-50 shadow-lg' : 'border-white bg-white shadow-sm'}`}>
           <span className="text-2xl mb-2 block">📻</span>
           <h3 className={`font-bold ${isJingleMode ? 'text-orange-700' : 'text-slate-700'}`}>MODE JINGLE / IKLAN</h3>
@@ -252,7 +324,145 @@ export default function KelolaJadwal() {
         </button>
       </div>
 
-      {/* 2. SLIDER NAVIGASI HARI */}
+      {/* LOCK PROGRAM LIVE */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm mb-10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">🔒</div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-700">Kunci Program LIVE</h3>
+              <p className="text-[11px] text-slate-400">Paksa program tertentu tetap LIVE meskipun jadwal sudah lewat (±10 menit)</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <select
+              value={liveProgramId || ''}
+              onChange={(e) => lockLiveProgram(e.target.value ? Number(e.target.value) : null)}
+              className="px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none min-w-[200px]"
+            >
+              <option value="">Otomatis (sesuai jadwal)</option>
+              {schedules.map((s) => (
+                <option key={s.id} value={s.id}>{s.jam} — {s.program}</option>
+              ))}
+            </select>
+            {liveProgramId && (
+              <button onClick={() => lockLiveProgram(null)} className="px-3 py-2 bg-red-50 text-red-500 rounded-xl text-xs font-bold hover:bg-red-100">
+                Lepas Lock
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 2. VIEW MODE TOGGLE */}
+      <div className="flex items-center gap-4 mb-4">
+        <button onClick={() => setViewMode('list')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${viewMode === 'list' ? 'bg-primary text-white shadow-md' : 'bg-white text-slate-400 border border-slate-100'}`}>
+          📋 Daftar Harian
+        </button>
+        <button onClick={() => setViewMode('calendar')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${viewMode === 'calendar' ? 'bg-primary text-white shadow-md' : 'bg-white text-slate-400 border border-slate-100'}`}>
+          📅 Kalender Bulanan
+        </button>
+      </div>
+
+      {viewMode === 'calendar' ? (
+        <>
+          {/* CALENDAR VIEW */}
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/30">
+              <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1); } else setCalMonth(calMonth - 1); }}
+                className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 font-bold text-lg">&larr;</button>
+              <h3 className="font-bold text-slate-700 uppercase text-sm tracking-widest">
+                {new Date(calYear, calMonth).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+              </h3>
+              <button onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); } else setCalMonth(calMonth + 1); }}
+                className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 font-bold text-lg">&rarr;</button>
+            </div>
+            <div className="p-4">
+              {/* Day headers */}
+              <div className="grid grid-cols-7 mb-2">
+                {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map(d => (
+                  <div key={d} className="text-center text-[10px] font-bold text-slate-400 py-2">{d}</div>
+                ))}
+              </div>
+              {/* Calendar grid */}
+              <div className="grid grid-cols-7 gap-1">
+                {(() => {
+                  const firstDay = new Date(calYear, calMonth, 1).getDay();
+                  const adjust = firstDay === 0 ? 6 : firstDay - 1; // Monday start
+                  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+                  const cells = [];
+                  for (let i = 0; i < adjust; i++) cells.push(<div key={`e${i}`} />);
+                  for (let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const count = (calSchedules[dateStr] || []).length;
+                    const isToday = dateStr === new Date().toISOString().split('T')[0];
+                    cells.push(
+                      <button key={day} onClick={() => openCalPopup(dateStr)}
+                        className={`relative p-2 rounded-xl text-center transition-all hover:bg-purple-50 min-h-[70px] flex flex-col items-center ${isToday ? 'ring-2 ring-primary bg-purple-50' : 'bg-slate-50/50'}`}>
+                        <span className={`text-sm font-bold ${isToday ? 'text-primary' : 'text-slate-600'}`}>{day}</span>
+                        {count > 0 && (
+                          <div className="mt-1">
+                            <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary text-[9px] font-bold rounded-full">{count} kajian</span>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  }
+                  return cells;
+                })()}
+              </div>
+            </div>
+          </div>
+
+          {/* CALENDAR POPUP MODAL */}
+          {calPopupDate && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setCalPopupDate(null)}>
+              <div className="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto p-6 mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-bold text-slate-700">📅 {new Date(calPopupDate + 'T00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</h2>
+                  <button onClick={() => setCalPopupDate(null)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400">&times;</button>
+                </div>
+                {calPopupData.length === 0 ? (
+                  <p className="text-slate-300 italic text-center py-10">Tidak ada jadwal</p>
+                ) : (
+                  <div className="space-y-3">
+                    {calPopupData.map((s) => (
+                      <div key={s.id} className="bg-slate-50 rounded-xl p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded">{s.jam}</span>
+                            <p className="text-[10px] font-bold text-primary uppercase mt-1">{s.program}</p>
+                            <p className="text-sm font-bold text-slate-700">{s.judul}</p>
+                            <p className="text-xs text-slate-400">{s.pemateri}</p>
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0">
+                            <button onClick={() => { setCalPopupDate(null); handleEdit(s); setViewMode('list'); setSelectedDate(calPopupDate); }}
+                              className="p-2 bg-blue-50 text-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition" title="Edit">
+                              <span className="material-icons-round text-sm">edit_note</span>
+                            </button>
+                            <button onClick={async () => { await deleteSchedule(s.id); fetchCalendarSchedules(); setCalPopupData(prev => prev.filter(x => x.id !== s.id)); }}
+                              className="p-2 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition" title="Hapus">
+                              <span className="material-icons-round text-sm">delete_outline</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                  <button onClick={() => { setCalPopupDate(null); setViewMode('list'); setSelectedDate(calPopupDate); }}
+                    className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90">
+                    Buka Daftar Hari Ini
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+      <>
+      {/* SLIDER NAVIGASI HARI */}
       <div className="flex gap-2 mb-8 overflow-x-auto pb-4 scrollbar-hide">
         {dateOptions.map((date) => (
           <button
@@ -302,6 +512,16 @@ export default function KelolaJadwal() {
                 <input type="text" placeholder="Judul kajian" value={judul} onChange={(e) => setJudul(e.target.value)} className="w-full rounded-xl border-slate-200 focus:ring-primary mb-2" required />
                 <input type="text" placeholder="Nama Pemateri" value={pemateri} onChange={(e) => setPemateri(e.target.value)} className="w-full rounded-xl border-slate-200 focus:ring-primary" required />
               </div>
+              <div className="border-t border-slate-50 pt-4 space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Detail Tambahan</label>
+                <input type="text" placeholder="Nama Kitab (opsional)" value={kitabName} onChange={(e) => setKitabName(e.target.value)} className="w-full rounded-xl border-slate-200 focus:ring-primary mb-2" />
+                <textarea placeholder="Deskripsi / keterangan (opsional)" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full rounded-xl border-slate-200 focus:ring-primary mb-2 resize-none" />
+                <input type="url" placeholder="URL File/Materi (opsional)" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} className="w-full rounded-xl border-slate-200 focus:ring-primary mb-2" />
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={isRelay} onChange={(e) => setIsRelay(e.target.checked)} className="w-4 h-4 text-purple-600 rounded" />
+                  <span className="text-xs text-slate-600 font-medium">Relay dari kajian offline</span>
+                </label>
+              </div>
               <button type="submit" className={`w-full text-white font-bold py-3 rounded-2xl transition-all shadow-md ${editingId ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-secondary'}`}>
                 {editingId ? 'Update Perubahan' : 'Posting Jadwal'}
               </button>
@@ -349,9 +569,13 @@ export default function KelolaJadwal() {
   </span>
 </td>
                     <td className="px-6 py-4">
-                      <p className="text-[10px] font-black text-primary uppercase leading-tight mb-1">{s.program}</p>
+                      <p className="text-[10px] font-black text-primary uppercase leading-tight mb-1">
+                        {s.program}
+                        {(s as any).is_relay && <span className="ml-2 px-1.5 py-0.5 bg-orange-100 text-orange-600 text-[8px] rounded font-bold">RELAY</span>}
+                      </p>
                       <p className="text-sm font-bold text-slate-800 leading-tight">{s.judul}</p>
                       <p className="text-xs text-slate-400 font-medium">{s.pemateri}</p>
+                      {(s as any).kitab_name && <p className="text-[10px] text-purple-400 mt-0.5">📖 {(s as any).kitab_name}</p>}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2 justify-end">
@@ -370,6 +594,8 @@ export default function KelolaJadwal() {
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }
