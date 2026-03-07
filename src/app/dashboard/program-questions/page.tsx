@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { ProgramQuestion } from '@/types/database';
-import { MessageSquareText, Search, Filter, Send, Mic, Archive, Clock, CheckCircle2, RefreshCw } from 'lucide-react';
+import { MessageSquareText, Search, Filter, Send, Mic, Archive, Clock, CheckCircle2, RefreshCw, Upload, Calendar, User, Radio, Link2 } from 'lucide-react';
 
 export default function ProgramQuestionsPage() {
   const [questions, setQuestions] = useState<ProgramQuestion[]>([]);
@@ -14,6 +14,9 @@ export default function ProgramQuestionsPage() {
   const [replyingId, setReplyingId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingId, setUploadingId] = useState<number | null>(null);
+  const [recordingUrl, setRecordingUrl] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchQuestions();
@@ -63,11 +66,53 @@ export default function ProgramQuestionsPage() {
     fetchQuestions();
   };
 
+  const handleUploadRecording = async (id: number) => {
+    if (!fileInputRef.current?.files?.length) return;
+    setIsSubmitting(true);
+    const file = fileInputRef.current.files[0];
+    const fileName = `recordings/${id}_${Date.now()}_${file.name}`;
+    
+    const { data, error } = await supabase.storage
+      .from('program-recordings')
+      .upload(fileName, file, { upsert: true });
+    
+    if (!error && data) {
+      const { data: urlData } = supabase.storage
+        .from('program-recordings')
+        .getPublicUrl(fileName);
+      
+      // @ts-expect-error - untyped table
+      await supabase.from('program_questions')
+        .update({ recording_url: urlData.publicUrl, status: 'answered' })
+        .eq('id', id);
+      
+      setUploadingId(null);
+      fetchQuestions();
+    } else {
+      alert('Gagal upload: ' + (error?.message || 'Unknown error'));
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleSaveRecordingUrl = async (id: number) => {
+    if (!recordingUrl.trim()) return;
+    setIsSubmitting(true);
+    // @ts-expect-error - untyped table
+    await supabase.from('program_questions')
+      .update({ recording_url: recordingUrl.trim(), status: 'answered' })
+      .eq('id', id);
+    setUploadingId(null);
+    setRecordingUrl('');
+    fetchQuestions();
+    setIsSubmitting(false);
+  };
+
   const filtered = questions.filter((q) => {
     const matchSearch =
       q.program_name.toLowerCase().includes(search.toLowerCase()) ||
       q.sender_name.toLowerCase().includes(search.toLowerCase()) ||
-      q.question.toLowerCase().includes(search.toLowerCase());
+      q.question.toLowerCase().includes(search.toLowerCase()) ||
+      (q.schedule_speaker || '').toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'all' || q.status === filterStatus;
     const matchRecording = !filterRecording || q.is_recording_request;
     return matchSearch && matchStatus && matchRecording;
@@ -167,22 +212,47 @@ export default function ProgramQuestionsPage() {
             return (
               <div key={q.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="p-5">
-                  {/* Header */}
+                  {/* Header with schedule detail */}
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-semibold">
-                        {q.program_name}
-                      </span>
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${cfg.color}`}>
-                        {cfg.icon} {cfg.label}
-                      </span>
-                      {q.is_recording_request && (
-                        <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium flex items-center gap-1">
-                          <Mic size={12} /> Minta Rekaman
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap mb-2">
+                        <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-semibold">
+                          {q.program_name}
                         </span>
-                      )}
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${cfg.color}`}>
+                          {cfg.icon} {cfg.label}
+                        </span>
+                        {q.is_recording_request && (
+                          <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium flex items-center gap-1">
+                            <Mic size={12} /> Minta Rekaman
+                          </span>
+                        )}
+                      </div>
+                      {/* Schedule metadata */}
+                      <div className="flex items-center gap-3 flex-wrap text-xs text-slate-400">
+                        {q.schedule_program && (
+                          <span className="flex items-center gap-1">
+                            <Radio size={11} /> {q.schedule_program}
+                          </span>
+                        )}
+                        {q.schedule_day && (
+                          <span className="flex items-center gap-1">
+                            <Calendar size={11} /> {q.schedule_day}
+                          </span>
+                        )}
+                        {q.schedule_time && (
+                          <span className="flex items-center gap-1">
+                            <Clock size={11} /> {q.schedule_time} WIB
+                          </span>
+                        )}
+                        {q.schedule_speaker && (
+                          <span className="flex items-center gap-1">
+                            <User size={11} /> {q.schedule_speaker}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-xs text-slate-400 whitespace-nowrap">
+                    <span className="text-xs text-slate-400 whitespace-nowrap ml-3">
                       {q.created_at ? new Date(q.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
                     </span>
                   </div>
@@ -198,6 +268,18 @@ export default function ProgramQuestionsPage() {
                     <div className="bg-green-50 border border-green-100 rounded-xl p-3 mb-3">
                       <p className="text-xs text-green-600 font-semibold mb-1">Balasan Admin:</p>
                       <p className="text-sm text-green-800">{q.admin_reply}</p>
+                    </div>
+                  )}
+
+                  {/* Recording URL (if uploaded) */}
+                  {q.recording_url && (
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-3">
+                      <p className="text-xs text-blue-600 font-semibold mb-1 flex items-center gap-1"><Mic size={12} /> Rekaman Tersedia:</p>
+                      <audio controls className="w-full mt-1 h-8" src={q.recording_url} />
+                      <a href={q.recording_url} target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-blue-500 hover:underline mt-1 inline-flex items-center gap-1">
+                        <Link2 size={11} /> Buka link rekaman
+                      </a>
                     </div>
                   )}
 
@@ -229,11 +311,53 @@ export default function ProgramQuestionsPage() {
                     </div>
                   )}
 
+                  {/* Recording Upload Form */}
+                  {uploadingId === q.id && (
+                    <div className="bg-blue-50 rounded-xl p-3 mb-3 border border-blue-200">
+                      <p className="text-xs font-semibold text-blue-700 mb-2 flex items-center gap-1"><Upload size={12} /> Upload Rekaman</p>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-xs text-slate-500 mb-1 block">Upload file audio:</label>
+                          <input ref={fileInputRef} type="file" accept="audio/*"
+                            className="w-full text-xs file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-blue-100 file:text-blue-700 file:font-medium file:text-xs" />
+                          <button
+                            onClick={() => handleUploadRecording(q.id!)}
+                            disabled={isSubmitting}
+                            className="mt-2 px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50"
+                          >
+                            {isSubmitting ? 'Mengupload...' : 'Upload File'}
+                          </button>
+                        </div>
+                        <div className="border-t border-blue-200 pt-2">
+                          <label className="text-xs text-slate-500 mb-1 block">Atau paste URL rekaman:</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="url"
+                              value={recordingUrl}
+                              onChange={(e) => setRecordingUrl(e.target.value)}
+                              placeholder="https://drive.google.com/..."
+                              className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none"
+                            />
+                            <button
+                              onClick={() => handleSaveRecordingUrl(q.id!)}
+                              disabled={isSubmitting || !recordingUrl.trim()}
+                              className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50"
+                            >
+                              Simpan
+                            </button>
+                          </div>
+                        </div>
+                        <button onClick={() => { setUploadingId(null); setRecordingUrl(''); }}
+                          className="text-xs text-slate-400 hover:text-slate-600">Batal</button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Actions */}
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-50">
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-50 flex-wrap">
                     {q.status !== 'answered' && replyingId !== q.id && (
                       <button
-                        onClick={() => { setReplyingId(q.id!); setReplyText(q.admin_reply || ''); }}
+                        onClick={() => { setReplyingId(q.id!); setReplyText(q.admin_reply || ''); setUploadingId(null); }}
                         className="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-medium hover:bg-primary/20 transition-colors flex items-center gap-1"
                       >
                         <Send size={12} /> Balas
@@ -241,10 +365,18 @@ export default function ProgramQuestionsPage() {
                     )}
                     {q.status === 'answered' && (
                       <button
-                        onClick={() => { setReplyingId(q.id!); setReplyText(q.admin_reply || ''); }}
+                        onClick={() => { setReplyingId(q.id!); setReplyText(q.admin_reply || ''); setUploadingId(null); }}
                         className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors"
                       >
                         Edit Balasan
+                      </button>
+                    )}
+                    {q.is_recording_request && uploadingId !== q.id && (
+                      <button
+                        onClick={() => { setUploadingId(q.id!); setReplyingId(null); setRecordingUrl(q.recording_url || ''); }}
+                        className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors flex items-center gap-1"
+                      >
+                        <Upload size={12} /> {q.recording_url ? 'Ganti Rekaman' : 'Upload Rekaman'}
                       </button>
                     )}
                     {q.status !== 'archived' && (

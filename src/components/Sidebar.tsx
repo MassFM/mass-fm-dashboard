@@ -2,28 +2,82 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Calendar, Image as ImageIcon, Heart, LogOut, Radio, MessageSquare, MessageCircleQuestion, Headphones, BarChart3, Bell, MapPin, Settings, MessageSquareDashed, MessageCircle, BookOpen, CalendarClock, AlertTriangle, Share2, MessageSquareText } from 'lucide-react';
+import { Calendar, Image as ImageIcon, Heart, LogOut, Radio, MessageSquare, MessageCircleQuestion, Headphones, BarChart3, Bell, MapPin, Settings, MessageSquareDashed, MessageCircle, BookOpen, CalendarClock, AlertTriangle, Share2, MessageSquareText, Moon, Menu, Clock, Star, Smartphone, Palette, Play, PartyPopper } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
-const menuItems = [
-  { name: 'Kelola Jadwal', href: '/dashboard/jadwal', icon: Calendar },
-  { name: 'Upload Poster', href: '/dashboard/poster', icon: ImageIcon },
-  { name: 'Data Donasi', href: '/dashboard/donasi', icon: Heart },
-  { name: 'Kritik & Saran', href: '/dashboard/feedback', icon: MessageSquare },
-  { name: 'Tanya Ustadz', href: '/dashboard/questions', icon: MessageCircleQuestion },
-  { name: 'Podcast', href: '/dashboard/podcast', icon: Headphones },
-  { name: 'Kajian Offline', href: '/dashboard/kajian-offline', icon: MapPin },
-  { name: 'Statistik', href: '/dashboard/statistik', icon: BarChart3 },
-  { name: 'Notifikasi', href: '/dashboard/notifications', icon: Bell },
-  { name: 'Auto Notifikasi', href: '/dashboard/notifications/settings', icon: Settings },
-  { name: 'Notif Terjadwal', href: '/dashboard/notifications/scheduled', icon: CalendarClock },
-  { name: 'Popup Info', href: '/dashboard/popups', icon: MessageSquareDashed },
-  { name: 'Live Chat', href: '/dashboard/chat', icon: MessageCircle },
-  { name: 'Doa Harian', href: '/dashboard/doa', icon: BookOpen },
-  { name: 'Laporan Gangguan', href: '/dashboard/trouble-reports', icon: AlertTriangle },
-  { name: 'Pertanyaan Program', href: '/dashboard/program-questions', icon: MessageSquareText },
-  { name: 'Share Settings', href: '/dashboard/share-settings', icon: Share2 },
+interface MenuItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ size?: number }>;
+}
+
+interface MenuGroup {
+  label: string;
+  items: MenuItem[];
+}
+
+const menuGroups: MenuGroup[] = [
+  {
+    label: 'Konten',
+    items: [
+      { name: 'Kelola Jadwal', href: '/dashboard/jadwal', icon: Calendar },
+      { name: 'Upload Poster', href: '/dashboard/poster', icon: ImageIcon },
+      { name: 'Kartu Ucapan', href: '/dashboard/kartu-ucapan', icon: PartyPopper },
+      { name: 'Podcast', href: '/dashboard/podcast', icon: Headphones },
+      { name: 'Kajian Offline', href: '/dashboard/kajian-offline', icon: MapPin },
+    ],
+  },
+  {
+    label: 'Ibadah',
+    items: [
+      { name: 'Doa Harian', href: '/dashboard/doa', icon: BookOpen },
+      { name: 'Dzikir Harian', href: '/dashboard/dzikir', icon: Moon },
+      { name: 'Kalender Islam', href: '/dashboard/islamic-events', icon: Star },
+    ],
+  },
+  {
+    label: 'Komunikasi',
+    items: [
+      { name: 'Live Chat', href: '/dashboard/chat', icon: MessageCircle },
+      { name: 'Tanya Ustadz', href: '/dashboard/questions', icon: MessageCircleQuestion },
+      { name: 'Pertanyaan Program', href: '/dashboard/program-questions', icon: MessageSquareText },
+      { name: 'Kritik & Saran', href: '/dashboard/feedback', icon: MessageSquare },
+    ],
+  },
+  {
+    label: 'Notifikasi',
+    items: [
+      { name: 'Notifikasi', href: '/dashboard/notifications', icon: Bell },
+      { name: 'Auto Notifikasi', href: '/dashboard/notifications/settings', icon: Settings },
+      { name: 'Notif Terjadwal', href: '/dashboard/notifications/scheduled', icon: CalendarClock },
+      { name: 'Popup Info', href: '/dashboard/popups', icon: MessageSquareDashed },
+    ],
+  },
+  {
+    label: 'Data & Laporan',
+    items: [
+      { name: 'Data Donasi', href: '/dashboard/donasi', icon: Heart },
+      { name: 'Statistik', href: '/dashboard/statistik', icon: BarChart3 },
+      { name: 'Laporan Gangguan', href: '/dashboard/trouble-reports', icon: AlertTriangle },
+    ],
+  },
+  {
+    label: 'Tampilan Aplikasi',
+    items: [
+      { name: 'Splash Screen', href: '/dashboard/splash-settings', icon: Smartphone },
+      { name: 'Tema Widget Info', href: '/dashboard/widget-theme', icon: Palette },
+      { name: 'Tema Widget Player', href: '/dashboard/player-theme', icon: Play },
+    ],
+  },
+  {
+    label: 'Pengaturan',
+    items: [
+      { name: 'Pengaturan Waktu', href: '/dashboard/time-settings', icon: Clock },
+      { name: 'Share Settings', href: '/dashboard/share-settings', icon: Share2 },
+      { name: 'Menu Settings', href: '/dashboard/menu-settings', icon: Menu },
+    ],
+  },
 ];
 
 export default function Sidebar() {
@@ -49,25 +103,33 @@ export default function Sidebar() {
       </div>
 
       {/* Menu Navigasi */}
-      <nav className="flex-1 px-4 space-y-1 mt-4 overflow-y-auto">
-        {menuItems.map((item) => {
-          // Logic agar submenu aktif jika URL diawali href menu tersebut
-          const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                isActive 
-                  ? 'bg-primary text-white shadow-lg shadow-primary/20' 
-                  : 'text-slate-500 hover:bg-slate-50 hover:text-primary'
-              }`}
-            >
-              <item.icon size={18} />
-              {item.name}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-4 mt-4 overflow-y-auto">
+        {menuGroups.map((group, gi) => (
+          <div key={group.label} className={gi > 0 ? 'mt-5' : ''}>
+            <p className="px-4 mb-2 text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+              {group.label}
+            </p>
+            <div className="space-y-1">
+              {group.items.map((item) => {
+                const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                      isActive
+                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                        : 'text-slate-500 hover:bg-slate-50 hover:text-primary'
+                    }`}
+                  >
+                    <item.icon size={17} />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Tombol Logout */}

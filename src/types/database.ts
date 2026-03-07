@@ -12,6 +12,9 @@ export interface Kajian {
     is_relay?: boolean;
     kitab_name?: string;
     file_url?: string;
+    youtube_url?: string;
+    recording_url?: string;
+    resume_html?: string;
   }
 
 export interface DonationAccount {
@@ -111,6 +114,8 @@ export interface DailyDoa {
   translation: string;
   source: string;
   category: string;
+  fawaid?: string | null;
+  notes?: string | null;
   is_active: boolean;
   created_at?: string;
 }
@@ -147,5 +152,60 @@ export interface ProgramQuestion {
   admin_reply?: string;
   is_recording_request: boolean;
   status: 'pending' | 'answered' | 'archived';
+  recording_url?: string;
+  schedule_day?: string;
+  schedule_time?: string;
+  schedule_speaker?: string;
+  schedule_program?: string;
   created_at?: string;
+}
+
+export interface IslamicEvent {
+  id?: string;
+  created_at?: string;
+  updated_at?: string;
+  event_type: 'islamic_event' | 'sunnah_fasting' | 'national_holiday';
+  name: string;
+  description: string;
+  hijri_month?: number | null;
+  hijri_day?: number | null;
+  masehi_month?: number | null;
+  masehi_day?: number | null;
+  day_of_week: string;
+  is_annual: boolean;
+  specific_date?: string | null;
+  badge_color: string;
+  is_active: boolean;
+}
+
+// ─── GREETING CARDS (Kartu Ucapan) ─────────────────────────────────
+
+export interface TextFieldConfig {
+  x: number;       // posisi horizontal (% dari lebar gambar, 0-100)
+  y: number;       // posisi vertikal (% dari tinggi gambar, 0-100)
+  fontSize: number; // ukuran font (pt)
+  color: string;    // hex color (#000000)
+  align: 'left' | 'center' | 'right';
+  label: string;    // placeholder label
+  enabled: boolean; // apakah field ini aktif
+  fontWeight: 'normal' | 'bold';
+  maxLines: number; // batas baris
+}
+
+export interface GreetingCard {
+  id?: string;
+  created_at?: string;
+  category: string;
+  title: string;
+  image_url: string;
+  sender_field: TextFieldConfig;
+  receiver_field: TextFieldConfig;
+  footnote_field: TextFieldConfig;
+  watermark_position: 'bottom-center' | 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right';
+  show_logo: boolean;
+  is_active: boolean;
+  is_seasonal: boolean;
+  season_start?: string | null;
+  season_end?: string | null;
+  sort_order: number;
 }

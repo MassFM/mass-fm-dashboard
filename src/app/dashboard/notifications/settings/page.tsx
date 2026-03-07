@@ -80,8 +80,18 @@ export default function NotificationSettingsPage() {
         return startTime > currentTime;
       });
 
+      // Hitung countdown aktual ke program berikutnya
+      let minutesLeft = 0;
+      if (nextSchedule) {
+        const startTime = nextSchedule.jam.split(' - ')[0].trim();
+        const [h, m] = startTime.split(':').map(Number);
+        const programDate = new Date();
+        programDate.setHours(h, m, 0, 0);
+        minutesLeft = Math.max(0, Math.round((programDate.getTime() - now.getTime()) / 60000));
+      }
+
       const title = nextSchedule
-        ? `${settings.notify_before_minutes} menit lagi: ${nextSchedule.program}`
+        ? `${minutesLeft} menit lagi: ${nextSchedule.program}`
         : 'Tes Notifikasi Jadwal';
       const message = nextSchedule
         ? `${nextSchedule.judul} bersama ${nextSchedule.pemateri} (${nextSchedule.jam})`

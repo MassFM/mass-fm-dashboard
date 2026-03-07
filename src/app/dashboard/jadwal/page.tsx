@@ -28,6 +28,9 @@ export default function KelolaJadwal() {
   const [isRelay, setIsRelay] = useState(false);
   const [kitabName, setKitabName] = useState('');
   const [fileUrl, setFileUrl] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [recordingUrl, setRecordingUrl] = useState('');
+  const [resumeHtml, setResumeHtml] = useState('');
   
   const [jamMulai, setJamMulai] = useState('08:00');
   const [jamSelesai, setJamSelesai] = useState('09:00');
@@ -196,6 +199,9 @@ export default function KelolaJadwal() {
     setIsRelay((item as any).is_relay || false);
     setKitabName((item as any).kitab_name || '');
     setFileUrl((item as any).file_url || '');
+    setYoutubeUrl((item as any).youtube_url || '');
+    setRecordingUrl((item as any).recording_url || '');
+    setResumeHtml((item as any).resume_html || '');
     
     const splitJam = item.jam.split(' - ');
     if (splitJam.length === 2) {
@@ -211,6 +217,8 @@ export default function KelolaJadwal() {
     setJamMulai('08:00'); setJamSelesai('09:00');
     setFormDate(new Date().toISOString().split('T')[0]);
     setDescription(''); setIsRelay(false); setKitabName(''); setFileUrl('');
+    setYoutubeUrl(''); setRecordingUrl('');
+    setResumeHtml('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -222,6 +230,9 @@ export default function KelolaJadwal() {
       is_relay: isRelay,
       kitab_name: kitabName.trim(),
       file_url: fileUrl.trim(),
+      youtube_url: youtubeUrl.trim() || null,
+      recording_url: recordingUrl.trim() || null,
+      resume_html: resumeHtml.trim() || null,
     };
 
     let error;
@@ -517,6 +528,42 @@ export default function KelolaJadwal() {
                 <input type="text" placeholder="Nama Kitab (opsional)" value={kitabName} onChange={(e) => setKitabName(e.target.value)} className="w-full rounded-xl border-slate-200 focus:ring-primary mb-2" />
                 <textarea placeholder="Deskripsi / keterangan (opsional)" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full rounded-xl border-slate-200 focus:ring-primary mb-2 resize-none" />
                 <input type="url" placeholder="URL File/Materi (opsional)" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} className="w-full rounded-xl border-slate-200 focus:ring-primary mb-2" />
+              </div>
+              <div className="border-t border-slate-50 pt-4 space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sumber Kajian</label>
+                <input type="url" placeholder="Link YouTube (opsional)" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} className="w-full rounded-xl border-slate-200 focus:ring-primary mb-2" />
+                {youtubeUrl && (() => {
+                  const match = youtubeUrl.match(/(?:youtu\.be\/|v=|embed\/)([\w-]{11})/);
+                  const videoId = match ? match[1] : null;
+                  return videoId ? (
+                    <div className="mb-2 rounded-xl overflow-hidden border border-slate-200">
+                      <img src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`} alt="YouTube thumbnail" className="w-full h-auto" />
+                    </div>
+                  ) : null;
+                })()}
+                <input type="url" placeholder="Link Rekaman MP3 (opsional)" value={recordingUrl} onChange={(e) => setRecordingUrl(e.target.value)} className="w-full rounded-xl border-slate-200 focus:ring-primary mb-2" />
+              </div>
+              {editingId && (
+              <div className="border-t border-slate-50 pt-4 space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Resume / Transkrip Kajian</label>
+                <p className="text-[9px] text-slate-400 -mt-1">Tulis ringkasan materi di halaman editor khusus yang lebih leluasa</p>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/dashboard/jadwal/resume?id=${editingId}`)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-icons-round text-purple-400 group-hover:text-purple-600 transition-colors">article</span>
+                    <div className="text-left">
+                      <span className="text-xs font-bold text-purple-600">Buka Editor Resume</span>
+                      <p className="text-[9px] text-slate-400 mt-0.5">{resumeHtml ? `~${resumeHtml.replace(/<[^>]*>/g, '').split(/\s+/).filter(Boolean).length} kata tersimpan` : 'Belum ada resume'}</p>
+                    </div>
+                  </div>
+                  <span className="material-icons-round text-purple-300 group-hover:text-purple-500 transition-colors">open_in_new</span>
+                </button>
+              </div>
+              )}
+              <div className="border-t border-slate-50 pt-4 space-y-2">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={isRelay} onChange={(e) => setIsRelay(e.target.checked)} className="w-4 h-4 text-purple-600 rounded" />
                   <span className="text-xs text-slate-600 font-medium">Relay dari kajian offline</span>
@@ -576,11 +623,19 @@ export default function KelolaJadwal() {
                       <p className="text-sm font-bold text-slate-800 leading-tight">{s.judul}</p>
                       <p className="text-xs text-slate-400 font-medium">{s.pemateri}</p>
                       {(s as any).kitab_name && <p className="text-[10px] text-purple-400 mt-0.5">📖 {(s as any).kitab_name}</p>}
+                      <div className="flex gap-1 mt-1">
+                        {(s as any).youtube_url && <span className="px-1.5 py-0.5 bg-red-50 text-red-500 text-[8px] rounded font-bold">▶ YouTube</span>}
+                        {(s as any).recording_url && <span className="px-1.5 py-0.5 bg-green-50 text-green-600 text-[8px] rounded font-bold">🎙 Rekaman</span>}
+                        {(s as any).resume_html && <span className="px-1.5 py-0.5 bg-purple-50 text-purple-600 text-[8px] rounded font-bold">📝 Resume</span>}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2 justify-end">
                         <button onClick={() => handleEdit(s)} className="p-2.5 bg-blue-50 text-blue-500 rounded-2xl hover:bg-blue-500 hover:text-white transition-all shadow-sm" title="Edit">
                           <span className="material-icons-round text-lg">edit_note</span>
+                        </button>
+                        <button onClick={() => router.push(`/dashboard/jadwal/resume?id=${s.id}`)} className="p-2.5 bg-purple-50 text-purple-500 rounded-2xl hover:bg-purple-500 hover:text-white transition-all shadow-sm" title="Resume">
+                          <span className="material-icons-round text-lg">article</span>
                         </button>
                         <button onClick={() => deleteSchedule(s.id)} className="p-2.5 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-500 hover:text-white transition-all shadow-sm" title="Hapus">
                           <span className="material-icons-round text-lg">delete_outline</span>
