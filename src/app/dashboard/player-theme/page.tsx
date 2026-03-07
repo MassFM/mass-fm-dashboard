@@ -323,9 +323,6 @@ function getCardShadow(theme: PlayerWidgetTheme) {
 
 /* ─── NowPlayingCard Preview (matches Flutter NowPlayingCard) ─── */
 function NowPlayingPreview({ theme }: { theme: PlayerWidgetTheme }) {
-  const isCentered = theme.layout === 'centered';
-  const isCompact = theme.layout === 'compact';
-
   return (
     <div>
       <p className="text-[9px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">NowPlayingCard</p>
@@ -344,40 +341,18 @@ function NowPlayingPreview({ theme }: { theme: PlayerWidgetTheme }) {
           <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(to right, transparent, ${theme.primary_color}, transparent)` }} />
         )}
 
-        {/* Row 1: badge + spectrum */}
-        <div className="flex items-center justify-between mb-4">
+        {/* Row 1: LIVE badge + time + spectrum + share */}
+        <div className="flex items-center gap-2 mb-4">
           <div className="flex items-center gap-1.5 bg-red-600 px-2.5 py-1.5 rounded-full">
             <div className="w-[6px] h-[6px] rounded-full bg-white animate-pulse" />
-            <span className="text-white text-[9px] font-bold tracking-[1.2px]">PROGRAM UTAMA</span>
+            <span className="text-white text-[10px] font-bold tracking-[1.5px]">LIVE</span>
           </div>
+          <div className="flex items-center gap-1 bg-white/[0.06] px-2 py-1 rounded-xl">
+            <span className="text-white/50 text-[10px]">🕐</span>
+            <span className="text-white/60 text-[10px] font-semibold">06:00 - 07:00</span>
+          </div>
+          <div className="flex-1" />
           {theme.show_spectrum && <SpectrumBars />}
-        </div>
-
-        {/* Title */}
-        <p className={`text-white font-bold text-lg mb-0.5 ${isCentered ? 'text-center' : ''}`} style={{ fontFamily: 'Montserrat, sans-serif' }}>
-          Kajian Fiqih Islam
-        </p>
-        {theme.show_speaker && (
-          <p className={`text-white/80 text-xs ${isCentered ? 'text-center' : ''}`}>
-            Ust. Ahmad Zainuddin
-          </p>
-        )}
-
-        {!isCompact && <div className="h-6" />}
-
-        {/* Row: Program info + share */}
-        <div className={`flex items-center ${isCentered ? 'justify-center' : 'justify-between'} gap-3`}>
-          {theme.show_program_name && (
-            <div className="flex items-center gap-2.5 flex-1">
-              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                <span className="text-white text-base">🎙</span>
-              </div>
-              <div>
-                <p className="text-white/60 text-[10px]">Program:</p>
-                <p className="text-white text-xs font-bold">Kajian Pagi</p>
-              </div>
-            </div>
-          )}
           {theme.show_share_button && (
             <div className="w-10 h-10 rounded-2xl bg-white/[0.12] flex items-center justify-center shrink-0">
               <span className="text-white text-base">↗</span>
@@ -385,16 +360,26 @@ function NowPlayingPreview({ theme }: { theme: PlayerWidgetTheme }) {
           )}
         </div>
 
-        {/* Sleep timer */}
-        {theme.show_sleep_timer && (
-          <div className="mt-2.5 flex items-center gap-1.5 bg-white/[0.15] rounded-full px-3 py-1.5 w-fit">
-            <span className="text-orange-300 text-[11px]">🌙</span>
-            <span className="text-orange-300 text-[11px] font-bold">Sleep: 28:45</span>
+        {/* Program name (small, above title) */}
+        {theme.show_program_name && (
+          <p className="text-white/40 text-[10px] font-bold tracking-[1.2px] mb-1">KAJIAN PAGI</p>
+        )}
+
+        {/* Title (large, left-aligned) */}
+        <p className="text-white font-bold text-[22px] leading-tight mb-0.5" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          Kajian Fiqih Islam
+        </p>
+
+        {/* Speaker */}
+        {theme.show_speaker && (
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span className="text-white/40 text-sm">👤</span>
+            <p className="text-white/70 text-[13px] font-medium">Ust. Ahmad Zainuddin</p>
           </div>
         )}
 
         {/* Controls: Play/Pause + Volume + Record */}
-        <div className="flex items-center gap-2.5 mt-4">
+        <div className="flex items-center gap-2.5 mt-5">
           <div className="w-11 h-11 rounded-full bg-white/[0.12] flex items-center justify-center shrink-0">
             <span className="text-white text-lg">⏸</span>
           </div>
@@ -406,6 +391,14 @@ function NowPlayingPreview({ theme }: { theme: PlayerWidgetTheme }) {
             <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
           </div>
         </div>
+
+        {/* Sleep timer */}
+        {theme.show_sleep_timer && (
+          <div className="mt-2.5 flex items-center gap-1.5 bg-white/[0.15] rounded-full px-3 py-1.5 w-fit">
+            <span className="text-orange-300 text-[11px]">🌙</span>
+            <span className="text-orange-300 text-[11px] font-bold">Sleep: 28:45</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -433,20 +426,27 @@ function WaitingCardPreview({ theme }: { theme: PlayerWidgetTheme }) {
           border: theme.style === 'neon' ? `1px solid ${theme.primary_color}44` : theme.style === 'glass' ? '1px solid rgba(255,255,255,0.15)' : 'none',
         }}
       >
-        {/* Top row: hourglass + spectrum */}
+        {/* Top row: badge + spectrum */}
         <div className="flex items-center mb-4">
+          <div className="flex items-center gap-1.5 bg-orange-400/[0.12] border border-orange-400/25 px-2.5 py-1.5 rounded-lg">
+            <span className="text-orange-400 text-sm">⏳</span>
+            <span className="text-orange-400 text-[9px] font-bold tracking-[0.5px]">PROGRAM BERIKUTNYA</span>
+          </div>
           <div className="flex-1" />
-          <span className="text-orange-400 text-2xl mr-2.5">⏳</span>
           {theme.show_spectrum && <SpectrumBars />}
         </div>
 
         {/* Center content */}
         <div className="text-center">
-          <p className="text-white/40 text-[10px] font-bold tracking-wide">PROGRAM BERIKUTNYA:</p>
-          <div className="h-3" />
-          <p className="text-orange-400 font-bold text-[15px]">Tausiyah Maghrib</p>
+          {/* Program name */}
+          {theme.show_program_name && (
+            <p className="text-white/45 text-[12px] font-bold tracking-[1px] mb-1.5">KAJIAN MAGRIB</p>
+          )}
+          {/* Title (white, prominent) */}
+          <p className="text-white font-bold text-[20px] leading-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>Tausiyah Maghrib</p>
+          {/* Speaker */}
           {theme.show_speaker && (
-            <p className="text-white/60 text-xs mt-1">Ust. Muhammad Ali</p>
+            <p className="text-white/70 text-[14px] font-medium mt-1.5">Ust. Muhammad Ali</p>
           )}
           <div className="h-4" />
           <div className="flex items-center justify-center gap-2.5">
@@ -457,6 +457,20 @@ function WaitingCardPreview({ theme }: { theme: PlayerWidgetTheme }) {
           </div>
         </div>
 
+        {/* Controls: Play/Pause + Volume + Record */}
+        <div className="flex items-center gap-2.5 mt-4">
+          <div className="w-11 h-11 rounded-full bg-white/[0.12] flex items-center justify-center shrink-0">
+            <span className="text-white text-lg">⏸</span>
+          </div>
+          <div className="flex-1 h-[3px] rounded-full bg-white/10 relative">
+            <div className="absolute left-0 top-0 h-full w-3/5 rounded-full bg-white" />
+            <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white" style={{ left: '60%' }} />
+          </div>
+          <div className="w-9 h-9 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+          </div>
+        </div>
+
         {/* Sleep timer */}
         {theme.show_sleep_timer && (
           <div className="mt-2.5 flex items-center justify-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5 w-fit mx-auto">
@@ -464,32 +478,6 @@ function WaitingCardPreview({ theme }: { theme: PlayerWidgetTheme }) {
             <span className="text-orange-300 text-[11px] font-bold">Sleep: 28:45</span>
           </div>
         )}
-        {/* Controls: Play/Pause + Volume + Record */}
-        <div className="flex items-center gap-2.5 mt-4">
-          <div className="w-11 h-11 rounded-full bg-white/[0.12] flex items-center justify-center shrink-0">
-            <span className="text-white text-lg">⏸</span>
-          </div>
-          <div className="flex-1 h-[3px] rounded-full bg-white/10 relative">
-            <div className="absolute left-0 top-0 h-full w-3/5 rounded-full bg-white" />
-            <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white" style={{ left: '60%' }} />
-          </div>
-          <div className="w-9 h-9 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-          </div>
-        </div>
-        {/* Controls: Play/Pause + Volume + Record */}
-        <div className="flex items-center gap-2.5 mt-4">
-          <div className="w-11 h-11 rounded-full bg-white/[0.12] flex items-center justify-center shrink-0">
-            <span className="text-white text-lg">⏸</span>
-          </div>
-          <div className="flex-1 h-[3px] rounded-full bg-white/10 relative">
-            <div className="absolute left-0 top-0 h-full w-3/5 rounded-full bg-white" />
-            <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white" style={{ left: '60%' }} />
-          </div>
-          <div className="w-9 h-9 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -540,6 +528,20 @@ function DefaultRadioPreview({ theme }: { theme: PlayerWidgetTheme }) {
             <span className="text-orange-300 text-[11px] font-bold">Sleep: 28:45</span>
           </div>
         )}
+
+        {/* Controls: Play/Pause + Volume + Record */}
+        <div className="flex items-center gap-2.5 mt-5">
+          <div className="w-11 h-11 rounded-full bg-white/[0.12] flex items-center justify-center shrink-0">
+            <span className="text-white text-lg">⏸</span>
+          </div>
+          <div className="flex-1 h-[3px] rounded-full bg-white/10 relative">
+            <div className="absolute left-0 top-0 h-full w-3/5 rounded-full bg-white" />
+            <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white" style={{ left: '60%' }} />
+          </div>
+          <div className="w-9 h-9 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+          </div>
+        </div>
       </div>
     </div>
   );
