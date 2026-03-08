@@ -43,8 +43,7 @@ export default function ProgramQuestionsPage() {
     setIsSubmitting(true);
     const { error } = await supabase
       .from('program_questions')
-      // @ts-expect-error - untyped table
-      .update({ admin_reply: replyText.trim(), status: 'answered' })
+      .update({ admin_reply: replyText.trim(), status: 'answered' } as any)
       .eq('id', id);
     if (!error) {
       setReplyingId(null);
@@ -55,8 +54,7 @@ export default function ProgramQuestionsPage() {
   };
 
   const handleStatusChange = async (id: number, status: string) => {
-    // @ts-expect-error - untyped table
-    await supabase.from('program_questions').update({ status }).eq('id', id);
+    await supabase.from('program_questions').update({ status } as any).eq('id', id);
     fetchQuestions();
   };
 
@@ -81,9 +79,8 @@ export default function ProgramQuestionsPage() {
         .from('program-recordings')
         .getPublicUrl(fileName);
       
-      // @ts-expect-error - untyped table
       await supabase.from('program_questions')
-        .update({ recording_url: urlData.publicUrl, status: 'answered' })
+        .update({ recording_url: urlData.publicUrl, status: 'answered' } as any)
         .eq('id', id);
       
       setUploadingId(null);
@@ -97,9 +94,8 @@ export default function ProgramQuestionsPage() {
   const handleSaveRecordingUrl = async (id: number) => {
     if (!recordingUrl.trim()) return;
     setIsSubmitting(true);
-    // @ts-expect-error - untyped table
     await supabase.from('program_questions')
-      .update({ recording_url: recordingUrl.trim(), status: 'answered' })
+      .update({ recording_url: recordingUrl.trim(), status: 'answered' } as any)
       .eq('id', id);
     setUploadingId(null);
     setRecordingUrl('');

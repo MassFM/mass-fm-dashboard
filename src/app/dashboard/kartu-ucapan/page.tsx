@@ -443,7 +443,7 @@ function CardFormModal({ card, onClose, onSaved }: {
                 <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Posisi Watermark</label>
                 <select
                   value={watermarkPos}
-                  onChange={(e) => setWatermarkPos(e.target.value)}
+                  onChange={(e) => setWatermarkPos(e.target.value as GreetingCard['watermark_position'])}
                   className="w-full rounded-xl border-slate-200 text-xs focus:ring-primary focus:border-primary"
                 >
                   {WATERMARK_POSITIONS.map(p => (

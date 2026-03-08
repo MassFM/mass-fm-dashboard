@@ -288,7 +288,8 @@ export default function KelolaJadwal() {
     reader.readAsBinaryString(file);
   };
 
-  const deleteSchedule = async (id: string) => {
+  const deleteSchedule = async (id: number | undefined) => {
+    if (id === undefined) return;
     if (confirm("Apakah Anda yakin ingin menghapus jadwal ini?")) {
       try {
         const { error } = await supabase.from('schedules').delete().eq('id', id);

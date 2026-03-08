@@ -15,7 +15,7 @@ interface RichTextEditorProps {
   placeholder?: string;
 }
 
-const MenuBar = ({ editor }: { editor: ReturnType<typeof useEditor> }) => {
+const MenuBar = ({ editor }: { editor: ReturnType<typeof useEditor> | null }) => {
   if (!editor) return null;
 
   const addImage = useCallback(() => {

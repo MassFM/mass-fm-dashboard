@@ -38,15 +38,13 @@ export default function TroubleReportsPage() {
 
   async function updateStatus(id: number, status: string) {
     setUpdatingId(id);
-    // @ts-expect-error - untyped table
-    await supabase.from('trouble_reports').update({ status }).eq('id', id);
+    await supabase.from('trouble_reports').update({ status } as any).eq('id', id);
     await fetchReports();
     setUpdatingId(null);
   }
 
   async function saveAdminNote(id: number) {
-    // @ts-expect-error - untyped table
-    await supabase.from('trouble_reports').update({ admin_note: adminNote }).eq('id', id);
+    await supabase.from('trouble_reports').update({ admin_note: adminNote } as any).eq('id', id);
     setEditingId(null);
     setAdminNote('');
     await fetchReports();
