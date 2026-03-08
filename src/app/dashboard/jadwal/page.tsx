@@ -19,7 +19,7 @@ export default function KelolaJadwal() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   // State Form & Edit Mode
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [judul, setJudul] = useState('');
   const [program, setProgram] = useState('');
   const [pemateri, setPemateri] = useState('');
@@ -190,7 +190,7 @@ export default function KelolaJadwal() {
   };
 
   const handleEdit = (item: Kajian) => {
-    setEditingId(item.id);
+    setEditingId(item.id ?? null);
     setJudul(item.judul);
     setProgram(item.program);
     setPemateri(item.pemateri);
