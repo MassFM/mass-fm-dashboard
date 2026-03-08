@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { SEED_MAP } from '@/lib/dzikir-seed';
 
 interface DzikirItem {
   id?: number;
@@ -22,9 +23,9 @@ interface DzikirItem {
 }
 
 const COLLECTION_TYPES = [
-  { value: 'pagi', label: 'Dzikir Pagi', color: 'bg-orange-500', icon: 'ğŸŒ…' },
-  { value: 'petang', label: 'Dzikir Petang', color: 'bg-indigo-500', icon: 'ğŸŒ™' },
-  { value: 'shalat', label: 'Dzikir Setelah Shalat', color: 'bg-teal-500', icon: 'ğŸ•Œ' },
+  { value: 'pagi', label: 'Dzikir Pagi', color: 'bg-orange-500', icon: '????' },
+  { value: 'petang', label: 'Dzikir Petang', color: 'bg-indigo-500', icon: '????' },
+  { value: 'shalat', label: 'Dzikir Setelah Shalat', color: 'bg-teal-500', icon: '????' },
 ];
 
 
@@ -215,7 +216,7 @@ export default function DzikirManager() {
       const { error } = await supabase.from('dzikir_items').insert(rows);
       if (error) throw error;
 
-      alert(`âœ… Berhasil import ${rows.length} dzikir ${collectionType}!`);
+      alert(`ƒ?? Berhasil import ${rows.length} dzikir ${collectionType}!`);
       if (collectionType === activeTab) fetchItems();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -258,7 +259,7 @@ export default function DzikirManager() {
         return;
       }
     }
-    alert('âœ… Berhasil import semua 45 dzikir!');
+    alert('ƒ?? Berhasil import semua 45 dzikir!');
     fetchItems();
     setImporting(false);
   };
@@ -310,10 +311,10 @@ export default function DzikirManager() {
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold text-slate-800">
-              {editingItem ? 'âœï¸ Edit Dzikir' : 'â• Tambah Dzikir Baru'}
+              {editingItem ? 'ƒ??‹?? Edit Dzikir' : 'ƒ?? Tambah Dzikir Baru'}
             </h2>
             <button onClick={resetForm} className="text-slate-400 hover:text-slate-600 text-sm">
-              âœ• Tutup
+              ƒ?? Tutup
             </button>
           </div>
 
@@ -361,7 +362,7 @@ export default function DzikirManager() {
                 rows={3}
                 dir="rtl"
                 className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-lg leading-loose focus:ring-2 focus:ring-[#822a6e]/20 focus:border-[#822a6e] outline-none font-serif"
-                placeholder="Ø£ÙØ¹ÙÙˆØ°Ù Ø¨ÙØ§Ù„Ù„ÙÙ‘Ù‡Ù Ù…ÙÙ†Ù Ø§Ù„Ø´ÙÙ‘ÙŠÙ’Ø·ÙØ§Ù†Ù Ø§Ù„Ø±ÙÙ‘Ø¬ÙÙŠÙ…Ù"
+                placeholder="?œâ???â?â???â? ??â???â?â?â?â?â?â? â?â?â?â? ??â???â?â?â?â???â???â?â? ??â???â?â???â?â?â?â?"
                 required
               />
             </div>
@@ -450,7 +451,7 @@ export default function DzikirManager() {
                     audio.play().catch(() => alert('Gagal memutar audio'));
                     setTimeout(() => audio.pause(), 5000);
                   }} className="px-3 py-2 rounded-xl bg-green-50 text-green-600 text-xs font-semibold hover:bg-green-100 transition shrink-0">
-                    ğŸ§ Test
+                    ???? Test
                   </button>
                 )}
               </div>
@@ -495,7 +496,7 @@ export default function DzikirManager() {
           </div>
         ) : items.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-slate-400 text-lg mb-2">ğŸ“¿ Belum ada dzikir</p>
+            <p className="text-slate-400 text-lg mb-2">???? Belum ada dzikir</p>
             <p className="text-slate-300 text-sm mb-4">Mulai tambahkan dzikir untuk {activeConfig.label}</p>
             <button
               onClick={openAddForm}
@@ -516,7 +517,7 @@ export default function DzikirManager() {
                       disabled={idx === 0}
                       className="text-slate-300 hover:text-slate-500 disabled:opacity-30 text-xs"
                     >
-                      â–²
+                      ƒ??
                     </button>
                     <span className="text-xs font-bold text-slate-400 bg-slate-100 w-6 h-6 flex items-center justify-center rounded-full">
                       {idx + 1}
@@ -526,7 +527,7 @@ export default function DzikirManager() {
                       disabled={idx === items.length - 1}
                       className="text-slate-300 hover:text-slate-500 disabled:opacity-30 text-xs"
                     >
-                      â–¼
+                      ƒ??
                     </button>
                   </div>
 
@@ -541,13 +542,13 @@ export default function DzikirManager() {
                     <p className="text-xs text-slate-500 line-clamp-2">{item.translation}</p>
                     <div className="flex items-center gap-3 mt-2">
                       <span className="text-[10px] bg-[#822a6e]/10 text-[#822a6e] px-2 py-0.5 rounded-full font-medium">
-                        {item.repetition}Ã— pengulangan
+                        {item.repetition}?? pengulangan
                       </span>
                       {item.source && (
-                        <span className="text-[10px] text-slate-400">ğŸ“– {item.source}</span>
+                        <span className="text-[10px] text-slate-400">???? {item.source}</span>
                       )}
                       {item.audio_url && (
-                        <span className="text-[10px] text-green-500">ğŸ§ Audio</span>
+                        <span className="text-[10px] text-green-500">???? Audio</span>
                       )}
                     </div>
                   </div>
@@ -559,21 +560,21 @@ export default function DzikirManager() {
                       className={`p-2 rounded-lg text-xs transition-colors ${
                         item.is_active ? 'text-green-500 hover:bg-green-50' : 'text-slate-300 hover:bg-slate-100'
                       }`}
-                      title={item.is_active ? 'Aktif â€” klik untuk nonaktifkan' : 'Nonaktif â€” klik untuk aktifkan'}
+                      title={item.is_active ? 'Aktif ƒ?? klik untuk nonaktifkan' : 'Nonaktif ƒ?? klik untuk aktifkan'}
                     >
-                      {item.is_active ? 'âœ…' : 'â¬œ'}
+                      {item.is_active ? 'ƒ??' : 'ƒ??'}
                     </button>
                     <button
                       onClick={() => openEditForm(item)}
                       className="p-2 rounded-lg text-blue-500 hover:bg-blue-50 text-xs"
                     >
-                      âœï¸
+                      ƒ??‹??
                     </button>
                     <button
                       onClick={() => handleDelete(item.id!)}
                       className="p-2 rounded-lg text-red-400 hover:bg-red-50 text-xs"
                     >
-                      ğŸ—‘ï¸
+                      ????‹??
                     </button>
                   </div>
                 </div>
