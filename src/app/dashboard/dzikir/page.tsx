@@ -1,4 +1,4 @@
-'use client';
+ï»¿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -23,9 +23,9 @@ interface DzikirItem {
 }
 
 const COLLECTION_TYPES = [
-  { value: 'pagi', label: 'Dzikir Pagi', color: 'bg-orange-500', icon: '????' },
-  { value: 'petang', label: 'Dzikir Petang', color: 'bg-indigo-500', icon: '????' },
-  { value: 'shalat', label: 'Dzikir Setelah Shalat', color: 'bg-teal-500', icon: '????' },
+  { value: 'pagi', label: 'Dzikir Pagi', color: 'bg-orange-500', icon: '\u2600\uFE0F' },
+  { value: 'petang', label: 'Dzikir Petang', color: 'bg-indigo-500', icon: '\uD83C\uDF19' },
+  { value: 'shalat', label: 'Dzikir Setelah Shalat', color: 'bg-teal-500', icon: '\uD83D\uDE4F' },
 ];
 
 
@@ -189,7 +189,6 @@ export default function DzikirManager() {
 
     setImporting(true);
     try {
-      // Get current max order_index
       const { data: existing } = await supabase
         .from('dzikir_items')
         .select('order_index')
@@ -216,7 +215,7 @@ export default function DzikirManager() {
       const { error } = await supabase.from('dzikir_items').insert(rows);
       if (error) throw error;
 
-      alert(`ƒ?? Berhasil import ${rows.length} dzikir ${collectionType}!`);
+      alert(`Berhasil import ${rows.length} dzikir ${collectionType}!`);
       if (collectionType === activeTab) fetchItems();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -227,7 +226,7 @@ export default function DzikirManager() {
   };
 
   const seedAll = async () => {
-    if (!confirm('Import SEMUA dzikir (pagi + petang + shalat) dari JSON?\nTotal: 45 item')) return;
+    if (!confirm('Import SEMUA dzikir (pagi + petang + shalat) dari JSON?')) return;
     setImporting(true);
     for (const type of ['pagi', 'petang', 'shalat']) {
       const seedItems = SEED_MAP[type];
@@ -259,7 +258,7 @@ export default function DzikirManager() {
         return;
       }
     }
-    alert('ƒ?? Berhasil import semua 45 dzikir!');
+    alert('Berhasil import semua dzikir!');
     fetchItems();
     setImporting(false);
   };
@@ -305,16 +304,33 @@ export default function DzikirManager() {
         ))}
       </div>
 
+      {/* Seed Buttons */}
+      <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={() => seedFromJson(activeTab)}
+          disabled={importing}
+          className="px-4 py-2 rounded-xl text-sm font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 disabled:opacity-50 transition"
+        >
+          Import Seed: {activeConfig.label}
+        </button>
+        <button
+          onClick={seedAll}
+          disabled={importing}
+          className="px-4 py-2 rounded-xl text-sm font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 disabled:opacity-50 transition"
+        >
+          {importing ? 'Mengimpor...' : 'Import Semua Dzikir'}
+        </button>
+      </div>
 
       {/* Form */}
       {showForm && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold text-slate-800">
-              {editingItem ? 'ƒ??‹?? Edit Dzikir' : 'ƒ?? Tambah Dzikir Baru'}
+              {editingItem ? 'Edit Dzikir' : 'Tambah Dzikir Baru'}
             </h2>
             <button onClick={resetForm} className="text-slate-400 hover:text-slate-600 text-sm">
-              ƒ?? Tutup
+              Tutup
             </button>
           </div>
 
@@ -362,7 +378,7 @@ export default function DzikirManager() {
                 rows={3}
                 dir="rtl"
                 className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-lg leading-loose focus:ring-2 focus:ring-[#822a6e]/20 focus:border-[#822a6e] outline-none font-serif"
-                placeholder="?œâ???â?â???â? ??â???â?â?â?â?â?â? â?â?â?â? ??â???â?â?â?â???â???â?â? ??â???â?â???â?â?â?â?"
+                placeholder="Ketik teks Arab di sini..."
                 required
               />
             </div>
@@ -451,7 +467,7 @@ export default function DzikirManager() {
                     audio.play().catch(() => alert('Gagal memutar audio'));
                     setTimeout(() => audio.pause(), 5000);
                   }} className="px-3 py-2 rounded-xl bg-green-50 text-green-600 text-xs font-semibold hover:bg-green-100 transition shrink-0">
-                    ???? Test
+                    Test
                   </button>
                 )}
               </div>
@@ -496,7 +512,7 @@ export default function DzikirManager() {
           </div>
         ) : items.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-slate-400 text-lg mb-2">???? Belum ada dzikir</p>
+            <p className="text-slate-400 text-lg mb-2">Belum ada dzikir</p>
             <p className="text-slate-300 text-sm mb-4">Mulai tambahkan dzikir untuk {activeConfig.label}</p>
             <button
               onClick={openAddForm}
@@ -510,14 +526,13 @@ export default function DzikirManager() {
             {items.map((item, idx) => (
               <div key={item.id} className={`p-4 hover:bg-slate-50/50 transition-colors ${!item.is_active ? 'opacity-40' : ''}`}>
                 <div className="flex items-start gap-4">
-                  {/* Order & Controls */}
-                  <div className="flex flex-col items-center gap-1 min-w-[32px]">
+                  <div className="flex flex-col items-center gap-1 min-w-8">
                     <button
                       onClick={() => moveItem(item, 'up')}
                       disabled={idx === 0}
                       className="text-slate-300 hover:text-slate-500 disabled:opacity-30 text-xs"
                     >
-                      ƒ??
+                      &uarr;
                     </button>
                     <span className="text-xs font-bold text-slate-400 bg-slate-100 w-6 h-6 flex items-center justify-center rounded-full">
                       {idx + 1}
@@ -527,11 +542,10 @@ export default function DzikirManager() {
                       disabled={idx === items.length - 1}
                       className="text-slate-300 hover:text-slate-500 disabled:opacity-30 text-xs"
                     >
-                      ƒ??
+                      &darr;
                     </button>
                   </div>
 
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
                     {item.title && (
                       <p className="font-bold text-sm text-slate-700 mb-1">{item.title}</p>
@@ -542,39 +556,38 @@ export default function DzikirManager() {
                     <p className="text-xs text-slate-500 line-clamp-2">{item.translation}</p>
                     <div className="flex items-center gap-3 mt-2">
                       <span className="text-[10px] bg-[#822a6e]/10 text-[#822a6e] px-2 py-0.5 rounded-full font-medium">
-                        {item.repetition}?? pengulangan
+                        {item.repetition}x pengulangan
                       </span>
                       {item.source && (
-                        <span className="text-[10px] text-slate-400">???? {item.source}</span>
+                        <span className="text-[10px] text-slate-400">{item.source}</span>
                       )}
                       {item.audio_url && (
-                        <span className="text-[10px] text-green-500">???? Audio</span>
+                        <span className="text-[10px] text-green-500">Audio</span>
                       )}
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={() => toggleActive(item)}
                       className={`p-2 rounded-lg text-xs transition-colors ${
                         item.is_active ? 'text-green-500 hover:bg-green-50' : 'text-slate-300 hover:bg-slate-100'
                       }`}
-                      title={item.is_active ? 'Aktif ƒ?? klik untuk nonaktifkan' : 'Nonaktif ƒ?? klik untuk aktifkan'}
+                      title={item.is_active ? 'Aktif - klik untuk nonaktifkan' : 'Nonaktif - klik untuk aktifkan'}
                     >
-                      {item.is_active ? 'ƒ??' : 'ƒ??'}
+                      {item.is_active ? 'Aktif' : 'Nonaktif'}
                     </button>
                     <button
                       onClick={() => openEditForm(item)}
                       className="p-2 rounded-lg text-blue-500 hover:bg-blue-50 text-xs"
                     >
-                      ƒ??‹??
+                      Edit
                     </button>
                     <button
                       onClick={() => handleDelete(item.id!)}
                       className="p-2 rounded-lg text-red-400 hover:bg-red-50 text-xs"
                     >
-                      ????‹??
+                      Hapus
                     </button>
                   </div>
                 </div>
