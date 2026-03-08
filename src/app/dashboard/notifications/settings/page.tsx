@@ -42,7 +42,10 @@ export default function NotificationSettingsPage() {
   };
 
   const fetchTodaySchedules = async () => {
-    const today = new Date().toISOString().split('T')[0];
+    // Gunakan waktu WIB (UTC+7) untuk menentukan tanggal hari ini
+    const now = new Date();
+    const wibDate = new Date(now.getTime() + (7 * 60 + now.getTimezoneOffset()) * 60000);
+    const today = wibDate.toISOString().split('T')[0];
     const { data } = await supabase
       .from('schedules')
       .select('judul, program, pemateri, jam')
@@ -76,18 +79,21 @@ export default function NotificationSettingsPage() {
       const now = new Date();
       const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
       const nextSchedule = todaySchedules.find(s => {
-        const startTime = s.jam.split(' - ')[0];
+        // Normalize dots to colons (jam bisa "08.00 - 09.00" atau "08:00 - 09:00")
+        const startTime = s.jam.replace(/\./g, ':').split(' - ')[0].trim();
         return startTime > currentTime;
       });
 
       // Hitung countdown aktual ke program berikutnya
       let minutesLeft = 0;
       if (nextSchedule) {
-        const startTime = nextSchedule.jam.split(' - ')[0].trim();
+        const startTime = nextSchedule.jam.replace(/\./g, ':').split(' - ')[0].trim();
         const [h, m] = startTime.split(':').map(Number);
-        const programDate = new Date();
-        programDate.setHours(h, m, 0, 0);
-        minutesLeft = Math.max(0, Math.round((programDate.getTime() - now.getTime()) / 60000));
+        if (!isNaN(h) && !isNaN(m)) {
+          const programDate = new Date();
+          programDate.setHours(h, m, 0, 0);
+          minutesLeft = Math.max(0, Math.round((programDate.getTime() - now.getTime()) / 60000));
+        }
       }
 
       const title = nextSchedule

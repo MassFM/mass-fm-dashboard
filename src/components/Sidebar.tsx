@@ -23,6 +23,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { name: 'Kelola Jadwal', href: '/dashboard/jadwal', icon: Calendar },
       { name: 'Upload Poster', href: '/dashboard/poster', icon: ImageIcon },
+      { name: 'Share Poster', href: '/dashboard/poster/share-settings', icon: Share2 },
       { name: 'Kartu Ucapan', href: '/dashboard/kartu-ucapan', icon: PartyPopper },
       { name: 'Podcast', href: '/dashboard/podcast', icon: Headphones },
       { name: 'Kajian Offline', href: '/dashboard/kajian-offline', icon: MapPin },

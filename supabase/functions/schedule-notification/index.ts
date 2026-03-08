@@ -27,8 +27,12 @@ Deno.serve(async (_req: Request) => {
     const notifyBeforeMinutes = settings.notify_before_minutes || 10;
     const topic = settings.notify_topic || "jadwal_update";
 
-    // 2. Get today's schedules
-    const today = new Date().toISOString().split("T")[0];
+    // 2. Get today's schedules (using WIB date)
+    const now = new Date();
+    const wibOffset = 7 * 60;
+    const wibMs = now.getTime() + (wibOffset + now.getTimezoneOffset()) * 60000;
+    const wibDate = new Date(wibMs);
+    const today = wibDate.toISOString().split("T")[0];
     const { data: schedules } = await supabase
       .from("schedules")
       .select("*")
@@ -55,9 +59,11 @@ Deno.serve(async (_req: Request) => {
     const notificationsSent: string[] = [];
 
     for (const schedule of schedules) {
-      // Parse start time from "HH:MM - HH:MM" format
-      const startTime = schedule.jam.split(" - ")[0].trim();
+      // Parse start time from "HH:MM - HH:MM" or "HH.MM - HH.MM" format
+      const normalizedJam = schedule.jam.replace(/\./g, ":");
+      const startTime = normalizedJam.split(" - ")[0].trim();
       const [startH, startM] = startTime.split(":").map(Number);
+      if (isNaN(startH) || isNaN(startM)) continue; // skip invalid format
       const scheduleTimeMinutes = startH * 60 + startM;
 
       // Calculate minutes until start
