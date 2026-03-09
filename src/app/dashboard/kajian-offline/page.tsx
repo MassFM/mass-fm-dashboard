@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Pencil, Trash2, MapPin, Phone, BookOpen, Radio, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, MapPin, Phone, BookOpen, Radio, X, Map, Tag, Users, Loader2 } from 'lucide-react';
 
 interface KajianOffline {
   id?: number;
@@ -23,16 +23,34 @@ interface KajianOffline {
   file_url: string;
   image_url: string;
   is_active: boolean;
+  provinsi: string;
+  kota: string;
+  kecamatan: string;
+  desa: string;
+  kategori: string;
+  audience: string;
   created_at?: string;
 }
+
+interface RegionItem {
+  id: string;
+  name: string;
+}
+
+const REGION_API = 'https://api-regional-indonesia.vercel.app';
 
 const emptyForm: KajianOffline = {
   title: '', pemateri: '', materi: '', description: '', tempat: '', alamat: '',
   latitude: null, longitude: null, contact_person: '', contact_phone: '',
   hari: '', jam: '', is_relay: false, kitab_name: '', file_url: '', image_url: '', is_active: true,
+  provinsi: '', kota: '', kecamatan: '', desa: '', kategori: '', audience: 'Umum',
 };
 
 const HARI_OPTIONS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'];
+
+const DEFAULT_KATEGORI = ['Aqidah','Fiqh','Tafsir','Hadits','Sirah','Adab & Akhlaq','Manhaj','Bahasa Arab','Tarbiyah','Umum'];
+
+const AUDIENCE_OPTIONS = ['Umum','Ikhwan','Akhwat'];
 
 export default function KajianOfflinePage() {
   const [data, setData] = useState<KajianOffline[]>([]);
@@ -42,6 +60,34 @@ export default function KajianOfflinePage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [kategoriOptions, setKategoriOptions] = useState<string[]>(DEFAULT_KATEGORI);
+  const [kategoriMode, setKategoriMode] = useState<'select'|'add'|'manage'>('select');
+  const [newKategori, setNewKategori] = useState('');
+  const [editingKategori, setEditingKategori] = useState<string|null>(null);
+  const [editKategoriValue, setEditKategoriValue] = useState('');
+
+  // Cascading region state
+  const [provinces, setProvinces] = useState<RegionItem[]>([]);
+  const [cities, setCities] = useState<RegionItem[]>([]);
+  const [districts, setDistricts] = useState<RegionItem[]>([]);
+  const [villages, setVillages] = useState<RegionItem[]>([]);
+  const [selProvId, setSelProvId] = useState<string>('');
+  const [selCityId, setSelCityId] = useState<string>('');
+  const [selDistId, setSelDistId] = useState<string>('');
+  const [loadingRegion, setLoadingRegion] = useState<string>('');
+
+  const fetchRegion = useCallback(async (endpoint: string): Promise<RegionItem[]> => {
+    try {
+      const res = await fetch(`${REGION_API}${endpoint}`);
+      const json = await res.json();
+      if (json.status && json.data) return json.data.map((d: { id: string; name: string }) => ({ id: d.id, name: d.name }));
+      return [];
+    } catch { return []; }
+  }, []);
+
+  useEffect(() => {
+    fetchRegion('/api/provinces?sort=name').then(setProvinces);
+  }, [fetchRegion]);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -50,8 +96,13 @@ export default function KajianOfflinePage() {
     const { data: result } = await supabase
       .from('kajian_offline')
       .select('*')
+      .order('provinsi', { ascending: true })
+      .order('kota', { ascending: true })
       .order('hari', { ascending: true });
     setData(result || []);
+    // Merge unique categories from DB with defaults
+    const dbKats = (result || []).map(k => k.kategori).filter(Boolean);
+    setKategoriOptions(prev => [...new Set([...prev, ...dbKats])].sort());
     setLoading(false);
   };
 
@@ -97,6 +148,12 @@ export default function KajianOfflinePage() {
       file_url: form.file_url.trim(),
       image_url: form.image_url.trim(),
       is_active: form.is_active,
+      provinsi: form.provinsi.trim(),
+      kota: form.kota.trim(),
+      kecamatan: form.kecamatan.trim(),
+      desa: form.desa.trim(),
+      kategori: form.kategori,
+      audience: form.audience,
     };
 
     if (editingId) {
@@ -124,7 +181,7 @@ export default function KajianOfflinePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold text-slate-800">Kajian Offline</h1>
-          <p className="text-sm text-slate-400 mt-1">Kelola jadwal kajian di masjid-masjid Se-Sragen</p>
+          <p className="text-sm text-slate-400 mt-1">Kelola jadwal kajian offline seluruh Indonesia</p>
         </div>
         <button onClick={openAdd}
           className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
@@ -217,7 +274,213 @@ export default function KajianOfflinePage() {
                 <input type="url" value={form.image_url} onChange={e => updateField('image_url', e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none" placeholder="https://..." />
               </div>
-              <div className="flex items-center gap-6">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Provinsi</label>
+                <select value={selProvId} onChange={async e => {
+                  const id = e.target.value;
+                  const prov = provinces.find(p => p.id === id);
+                  setSelProvId(id);
+                  updateField('provinsi', prov?.name || '');
+                  setSelCityId(''); setCities([]); setDistricts([]); setVillages([]);
+                  updateField('kota', ''); updateField('kecamatan', ''); updateField('desa', '');
+                  if (id) { setLoadingRegion('city'); setCities(await fetchRegion(`/api/cities/${id}?sort=name`)); setLoadingRegion(''); }
+                }}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none">
+                  <option value="">Pilih Provinsi (38 provinsi)</option>
+                  {provinces.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Kota / Kabupaten {loadingRegion === 'city' && <Loader2 size={12} className="inline animate-spin ml-1" />}</label>
+                <select value={selCityId} onChange={async e => {
+                  const id = e.target.value;
+                  const city = cities.find(c => c.id === id);
+                  setSelCityId(id);
+                  updateField('kota', city?.name || '');
+                  setSelDistId(''); setDistricts([]); setVillages([]);
+                  updateField('kecamatan', ''); updateField('desa', '');
+                  if (id) { setLoadingRegion('dist'); setDistricts(await fetchRegion(`/api/districts/${id}?sort=name`)); setLoadingRegion(''); }
+                }}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none">
+                  <option value="">{selProvId ? 'Pilih Kota / Kabupaten' : 'Pilih provinsi terlebih dahulu'}</option>
+                  {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Kecamatan {loadingRegion === 'dist' && <Loader2 size={12} className="inline animate-spin ml-1" />}</label>
+                <select value={selDistId} onChange={async e => {
+                  const id = e.target.value;
+                  const dist = districts.find(d => d.id === id);
+                  setSelDistId(id);
+                  updateField('kecamatan', dist?.name || '');
+                  setVillages([]);
+                  updateField('desa', '');
+                  if (id) { setLoadingRegion('village'); setVillages(await fetchRegion(`/api/villages/${id}?sort=name`)); setLoadingRegion(''); }
+                }}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none">
+                  <option value="">{selCityId ? 'Pilih Kecamatan' : 'Pilih kota terlebih dahulu'}</option>
+                  {districts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Desa / Kelurahan {loadingRegion === 'village' && <Loader2 size={12} className="inline animate-spin ml-1" />}</label>
+                <select value={form.desa} onChange={e => {
+                  const villageName = e.target.value;
+                  updateField('desa', villageName);
+                }}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none">
+                  <option value="">{selDistId ? 'Pilih Desa / Kelurahan' : 'Pilih kecamatan terlebih dahulu'}</option>
+                  {villages.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-500">Kategori / Topik</label>
+                  {kategoriMode === 'select' && (
+                    <button type="button" onClick={() => setKategoriMode('manage')}
+                      className="text-[10px] text-purple-500 hover:text-purple-700 font-semibold">Kelola Kategori</button>
+                  )}
+                  {kategoriMode !== 'select' && (
+                    <button type="button" onClick={() => { setKategoriMode('select'); setNewKategori(''); setEditingKategori(null); }}
+                      className="text-[10px] text-slate-400 hover:text-slate-600 font-semibold">Selesai</button>
+                  )}
+                </div>
+
+                {/* Mode: Select */}
+                {kategoriMode === 'select' && (
+                  <select value={form.kategori} onChange={e => {
+                    if (e.target.value === '__add_new__') { setKategoriMode('add'); return; }
+                    updateField('kategori', e.target.value);
+                  }}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none">
+                    <option value="">Pilih Kategori</option>
+                    {kategoriOptions.map(k => <option key={k} value={k}>{k}</option>)}
+                    <option value="__add_new__">＋ Tambah Kategori Baru...</option>
+                  </select>
+                )}
+
+                {/* Mode: Add */}
+                {kategoriMode === 'add' && (
+                  <div className="flex gap-2">
+                    <input type="text" value={newKategori} onChange={e => setNewKategori(e.target.value)}
+                      autoFocus placeholder="Nama kategori baru"
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && newKategori.trim()) {
+                          const val = newKategori.trim();
+                          if (!kategoriOptions.includes(val)) setKategoriOptions(prev => [...prev, val].sort());
+                          updateField('kategori', val);
+                          setNewKategori(''); setKategoriMode('select');
+                        }
+                        if (e.key === 'Escape') { setNewKategori(''); setKategoriMode('select'); }
+                      }}
+                      className="flex-1 px-3 py-2 border border-purple-300 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none" />
+                    <button type="button" onClick={() => {
+                      const val = newKategori.trim();
+                      if (val) {
+                        if (!kategoriOptions.includes(val)) setKategoriOptions(prev => [...prev, val].sort());
+                        updateField('kategori', val);
+                      }
+                      setNewKategori(''); setKategoriMode('select');
+                    }}
+                      className="px-3 py-2 bg-primary text-white rounded-xl text-xs font-semibold hover:bg-primary/90 transition-colors">Simpan</button>
+                    <button type="button" onClick={() => { setNewKategori(''); setKategoriMode('select'); }}
+                      className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-200 transition-colors">Batal</button>
+                  </div>
+                )}
+
+                {/* Mode: Manage (list with edit/delete per item + add) */}
+                {kategoriMode === 'manage' && (
+                  <div className="border border-slate-200 rounded-xl p-3 space-y-1.5 max-h-52 overflow-y-auto">
+                    {kategoriOptions.map(k => (
+                      <div key={k} className="flex items-center gap-1.5 group">
+                        {editingKategori === k ? (
+                          <>
+                            <input type="text" value={editKategoriValue} onChange={e => setEditKategoriValue(e.target.value)}
+                              autoFocus
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && editKategoriValue.trim()) {
+                                  const newVal = editKategoriValue.trim();
+                                  if (newVal !== k && !kategoriOptions.includes(newVal)) {
+                                    setKategoriOptions(prev => prev.map(x => x === k ? newVal : x).sort());
+                                    if (form.kategori === k) updateField('kategori', newVal);
+                                    // Update existing data in DB
+                                    supabase.from('kajian_offline').update({ kategori: newVal }).eq('kategori', k).then(() => fetchData());
+                                  }
+                                  setEditingKategori(null); setEditKategoriValue('');
+                                }
+                                if (e.key === 'Escape') { setEditingKategori(null); setEditKategoriValue(''); }
+                              }}
+                              className="flex-1 px-2 py-1 border border-purple-300 rounded-lg text-xs focus:ring-2 focus:ring-purple-200 outline-none" />
+                            <button type="button" onClick={() => {
+                              const newVal = editKategoriValue.trim();
+                              if (newVal && newVal !== k && !kategoriOptions.includes(newVal)) {
+                                setKategoriOptions(prev => prev.map(x => x === k ? newVal : x).sort());
+                                if (form.kategori === k) updateField('kategori', newVal);
+                                supabase.from('kajian_offline').update({ kategori: newVal }).eq('kategori', k).then(() => fetchData());
+                              }
+                              setEditingKategori(null); setEditKategoriValue('');
+                            }}
+                              className="p-1 text-green-500 hover:bg-green-50 rounded">✓</button>
+                            <button type="button" onClick={() => { setEditingKategori(null); setEditKategoriValue(''); }}
+                              className="p-1 text-slate-400 hover:bg-slate-100 rounded"><X size={12} /></button>
+                          </>
+                        ) : (
+                          <>
+                            <span className={`flex-1 text-xs py-1 px-2 rounded-lg cursor-pointer transition-colors ${
+                              form.kategori === k ? 'bg-purple-100 text-purple-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'
+                            }`} onClick={() => { updateField('kategori', k); setKategoriMode('select'); }}>{k}</span>
+                            <button type="button" onClick={() => { setEditingKategori(k); setEditKategoriValue(k); }}
+                              className="p-1 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Pencil size={11} />
+                            </button>
+                            <button type="button" onClick={() => {
+                              if (!confirm(`Hapus kategori "${k}"? Data kajian dengan kategori ini akan dikosongkan.`)) return;
+                              setKategoriOptions(prev => prev.filter(x => x !== k));
+                              if (form.kategori === k) updateField('kategori', '');
+                              // Clear kategori in DB for affected rows
+                              supabase.from('kajian_offline').update({ kategori: '' }).eq('kategori', k).then(() => fetchData());
+                            }}
+                              className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Trash2 size={11} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                    {/* Add new inline */}
+                    <div className="flex gap-1.5 pt-1.5 border-t border-slate-100">
+                      <input type="text" value={newKategori} onChange={e => setNewKategori(e.target.value)}
+                        placeholder="+ Kategori baru"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && newKategori.trim()) {
+                            const val = newKategori.trim();
+                            if (!kategoriOptions.includes(val)) setKategoriOptions(prev => [...prev, val].sort());
+                            updateField('kategori', val);
+                            setNewKategori('');
+                          }
+                        }}
+                        className="flex-1 px-2 py-1 border border-dashed border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-purple-200 outline-none placeholder:text-slate-300" />
+                      <button type="button" onClick={() => {
+                        const val = newKategori.trim();
+                        if (val && !kategoriOptions.includes(val)) {
+                          setKategoriOptions(prev => [...prev, val].sort());
+                          updateField('kategori', val);
+                          setNewKategori('');
+                        }
+                      }}
+                        className="px-2 py-1 bg-primary text-white rounded-lg text-[10px] font-semibold hover:bg-primary/90 transition-colors">Tambah</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Audience / Peserta</label>
+                <select value={form.audience} onChange={e => updateField('audience', e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none">
+                  {AUDIENCE_OPTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+              <div className="md:col-span-2 flex items-center gap-6">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={form.is_relay} onChange={e => updateField('is_relay', e.target.checked)}
                     className="w-4 h-4 text-purple-600 rounded" />
@@ -267,7 +530,7 @@ export default function KajianOfflinePage() {
                 </div>
               ) : (
                 <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center flex-shrink-0">
+                  <div className="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
                     <span className="text-lg">🕌</span>
                   </div>
                   <div className="flex-1 min-w-0">
@@ -284,10 +547,19 @@ export default function KajianOfflinePage() {
                     </div>
                     {item.pemateri && <p className="text-xs text-purple-500 font-medium mt-0.5">{item.pemateri}</p>}
                     <div className="flex flex-wrap gap-3 mt-2 text-[11px] text-slate-400">
+                      {(item.kota || item.provinsi) && (
+                        <span className="flex items-center gap-1"><Map size={11} className="text-indigo-400" /> {[item.kota, item.provinsi].filter(Boolean).join(', ')}</span>
+                      )}
                       {item.tempat && (
                         <span className="flex items-center gap-1"><MapPin size={11} /> {item.tempat}</span>
                       )}
                       {item.hari && <span>📅 {item.hari}, {item.jam}</span>}
+                      {item.kategori && (
+                        <span className="flex items-center gap-1"><Tag size={11} className="text-teal-400" /> {item.kategori}</span>
+                      )}
+                      {item.audience && item.audience !== 'Umum' && (
+                        <span className="flex items-center gap-1"><Users size={11} className="text-purple-400" /> {item.audience}</span>
+                      )}
                       {item.kitab_name && (
                         <span className="flex items-center gap-1"><BookOpen size={11} /> {item.kitab_name}</span>
                       )}
@@ -296,7 +568,7 @@ export default function KajianOfflinePage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-1 flex-shrink-0">
+                  <div className="flex gap-1 shrink-0">
                     <button onClick={() => openEdit(item)}
                       className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
                       <Pencil size={14} />
