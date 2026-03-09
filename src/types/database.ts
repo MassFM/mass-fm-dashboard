@@ -15,6 +15,8 @@ export interface Kajian {
     youtube_url?: string;
     recording_url?: string;
     resume_html?: string;
+    /** Kategori program: 'live_studio' | 'live_relay' | 'live_delay' | 'rekaman' | '' */
+    category?: string;
   }
 
 export interface DonationAccount {

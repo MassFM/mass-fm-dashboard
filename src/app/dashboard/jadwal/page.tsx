@@ -31,6 +31,7 @@ export default function KelolaJadwal() {
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [recordingUrl, setRecordingUrl] = useState('');
   const [resumeHtml, setResumeHtml] = useState('');
+  const [category, setCategory] = useState('');
   
   const [jamMulai, setJamMulai] = useState('08:00');
   const [jamSelesai, setJamSelesai] = useState('09:00');
@@ -202,6 +203,7 @@ export default function KelolaJadwal() {
     setYoutubeUrl((item as any).youtube_url || '');
     setRecordingUrl((item as any).recording_url || '');
     setResumeHtml((item as any).resume_html || '');
+    setCategory((item as any).category || '');
     
     const splitJam = item.jam.split(' - ');
     if (splitJam.length === 2) {
@@ -219,6 +221,7 @@ export default function KelolaJadwal() {
     setDescription(''); setIsRelay(false); setKitabName(''); setFileUrl('');
     setYoutubeUrl(''); setRecordingUrl('');
     setResumeHtml('');
+    setCategory('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -233,6 +236,7 @@ export default function KelolaJadwal() {
       youtube_url: youtubeUrl.trim() || null,
       recording_url: recordingUrl.trim() || null,
       resume_html: resumeHtml.trim() || null,
+      category: category.trim(),
     };
 
     let error;
@@ -520,6 +524,21 @@ export default function KelolaJadwal() {
                 <input type="text" placeholder="Contoh: Cahaya Sunnah" value={program} onChange={(e) => setProgram(e.target.value)} className="w-full rounded-xl border-slate-200 focus:ring-primary" required />
               </div>
               <div className="border-t border-slate-50 pt-4 space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kategori Program</label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 p-2 text-sm focus:ring-2 focus:ring-purple-200 outline-none bg-white"
+                >
+                  <option value="">— Pilih Kategori (opsional) —</option>
+                  <option value="live_studio">🎙️ Live Studio</option>
+                  <option value="live_relay">📡 Live Relay</option>
+                  <option value="live_delay">⏱️ Live Delay</option>
+                  <option value="rekaman">🎵 Rekaman</option>
+                </select>
+                <p className="text-[9px] text-slate-400">Kategori ditampilkan sebagai badge di halaman jadwal siar aplikasi</p>
+              </div>
+              <div className="border-t border-slate-50 pt-4 space-y-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Judul & Pemateri</label>
                 <input type="text" placeholder="Judul kajian" value={judul} onChange={(e) => setJudul(e.target.value)} className="w-full rounded-xl border-slate-200 focus:ring-primary mb-2" required />
                 <input type="text" placeholder="Nama Pemateri" value={pemateri} onChange={(e) => setPemateri(e.target.value)} className="w-full rounded-xl border-slate-200 focus:ring-primary" required />
@@ -620,6 +639,10 @@ export default function KelolaJadwal() {
                       <p className="text-[10px] font-black text-primary uppercase leading-tight mb-1">
                         {s.program}
                         {(s as any).is_relay && <span className="ml-2 px-1.5 py-0.5 bg-orange-100 text-orange-600 text-[8px] rounded font-bold">RELAY</span>}
+                        {(s as any).category === 'live_studio' && <span className="ml-1 px-1.5 py-0.5 bg-purple-100 text-purple-600 text-[8px] rounded font-bold">🎙 STUDIO</span>}
+                        {(s as any).category === 'live_relay' && <span className="ml-1 px-1.5 py-0.5 bg-orange-100 text-orange-600 text-[8px] rounded font-bold">📡 RELAY</span>}
+                        {(s as any).category === 'live_delay' && <span className="ml-1 px-1.5 py-0.5 bg-blue-100 text-blue-600 text-[8px] rounded font-bold">⏱ DELAY</span>}
+                        {(s as any).category === 'rekaman' && <span className="ml-1 px-1.5 py-0.5 bg-green-100 text-green-600 text-[8px] rounded font-bold">🎵 REKAMAN</span>}
                       </p>
                       <p className="text-sm font-bold text-slate-800 leading-tight">{s.judul}</p>
                       <p className="text-xs text-slate-400 font-medium">{s.pemateri}</p>
