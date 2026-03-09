@@ -180,6 +180,31 @@ export interface IslamicEvent {
   is_active: boolean;
 }
 
+// ─── POSTER CATEGORIES ──────────────────────────────────────────────
+
+export interface PosterCategory {
+  id?: string;
+  created_at?: string;
+  name: string;
+  description: string;
+  color: string;
+  icon: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface Poster {
+  id?: string;
+  created_at?: string;
+  judul: string;
+  image_url: string;
+  order_index: number;
+  is_active: boolean;
+  category_id?: string | null;
+  // joined
+  poster_categories?: PosterCategory | null;
+}
+
 // ─── GREETING CARDS (Kartu Ucapan) ─────────────────────────────────
 
 export interface TextFieldConfig {

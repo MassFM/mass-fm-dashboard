@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Calendar, Image as ImageIcon, Heart, LogOut, Radio, MessageSquare, MessageCircleQuestion, Headphones, BarChart3, Bell, MapPin, Settings, MessageSquareDashed, MessageCircle, BookOpen, CalendarClock, AlertTriangle, Share2, MessageSquareText, Moon, Menu, Clock, Star, Smartphone, Palette, Play, PartyPopper } from 'lucide-react';
+import { Calendar, Image as ImageIcon, Heart, LogOut, Radio, MessageSquare, MessageCircleQuestion, Headphones, BarChart3, Bell, MapPin, Settings, MessageSquareDashed, MessageCircle, BookOpen, CalendarClock, AlertTriangle, Share2, MessageSquareText, Moon, Menu, Clock, Star, Smartphone, Palette, Play, PartyPopper, FolderOpen } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -23,6 +23,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { name: 'Kelola Jadwal', href: '/dashboard/jadwal', icon: Calendar },
       { name: 'Upload Poster', href: '/dashboard/poster', icon: ImageIcon },
+      { name: 'Kategori Poster', href: '/dashboard/poster/categories', icon: FolderOpen },
       { name: 'Share Poster', href: '/dashboard/poster/share-settings', icon: Share2 },
       { name: 'Kartu Ucapan', href: '/dashboard/kartu-ucapan', icon: PartyPopper },
       { name: 'Podcast', href: '/dashboard/podcast', icon: Headphones },
