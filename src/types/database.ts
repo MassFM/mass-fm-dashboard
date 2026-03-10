@@ -286,3 +286,27 @@ export interface Ebook {
   is_active: boolean;
   sort_order: number;
 }
+
+// ─── POPUP INFO ─────────────────────────────────────────────
+
+export interface ClickArea {
+  x: number;  // posisi X (% dari lebar gambar, 0-100)
+  y: number;  // posisi Y (% dari tinggi gambar, 0-100)
+  w: number;  // lebar area (%)
+  h: number;  // tinggi area (%)
+}
+
+export interface PopupItem {
+  id?: number;
+  created_at?: string;
+  type: 'open' | 'close';
+  title: string;
+  body: string;
+  image_url: string;
+  action_type: 'url' | 'whatsapp' | 'screen';
+  action_url: string;
+  action_label: string;
+  click_area: ClickArea | null;
+  is_active: boolean;
+  show_once: boolean;
+}

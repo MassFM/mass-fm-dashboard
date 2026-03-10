@@ -1,40 +1,241 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Trash2, ToggleLeft, ToggleRight, Edit, MessageSquareDashed, Smartphone, LogOut as LogOutIcon } from 'lucide-react';
+import { PopupItem, ClickArea } from '@/types/database';
+import {
+  Plus, Trash2, ToggleLeft, ToggleRight, Edit,
+  MessageSquareDashed, Smartphone, LogOut as LogOutIcon,
+  Globe, MessageCircle, Layout, MousePointer2, X, RotateCcw,
+  Upload, ImageIcon, Link2,
+} from 'lucide-react';
 
-interface PopupItem {
-  id: number;
+// ─── Daftar halaman aplikasi yang bisa dijadikan target navigasi ───
+const APP_SCREENS: { value: string; label: string; group: string }[] = [
+  // Interaksi
+  { value: 'live_chat', label: 'Live Chat', group: 'Interaksi' },
+  { value: 'tanya_ustadz', label: 'Tanya Ustadz', group: 'Interaksi' },
+  { value: 'trouble_report', label: 'Lapor Gangguan', group: 'Interaksi' },
+  { value: 'feedback', label: 'Kritik & Saran', group: 'Interaksi' },
+  // Ibadah
+  { value: 'dzikir', label: 'Dzikir', group: 'Ibadah' },
+  { value: 'doa_harian', label: 'Doa Harian', group: 'Ibadah' },
+  { value: 'prayer_times', label: 'Waktu Shalat', group: 'Ibadah' },
+  { value: 'qibla', label: 'Arah Kiblat', group: 'Ibadah' },
+  // Kajian & Konten
+  { value: 'podcast', label: 'Podcast', group: 'Kajian & Konten' },
+  { value: 'ebook', label: 'Ebook Islami', group: 'Kajian & Konten' },
+  { value: 'kajian_offline', label: 'Kajian Offline', group: 'Kajian & Konten' },
+  { value: 'kalender_kajian', label: 'Kalender Kajian', group: 'Kajian & Konten' },
+  { value: 'greeting_card', label: 'Kartu Ucapan', group: 'Kajian & Konten' },
+  { value: 'event', label: 'Event & Acara', group: 'Kajian & Konten' },
+  // Lainnya
+  { value: 'donasi', label: 'Donasi', group: 'Lainnya' },
+  { value: 'statistik', label: 'Statistik', group: 'Lainnya' },
+  { value: 'onboarding', label: 'Tutorial', group: 'Lainnya' },
+  { value: 'about_app', label: 'Tentang Aplikasi', group: 'Lainnya' },
+];
+
+type FormState = {
   type: 'open' | 'close';
   title: string;
   body: string;
   image_url: string;
+  action_type: 'url' | 'whatsapp' | 'screen';
   action_url: string;
   action_label: string;
+  click_area: ClickArea | null;
   is_active: boolean;
   show_once: boolean;
-  created_at: string;
-}
+};
 
-const emptyForm: Omit<PopupItem, 'id' | 'created_at'> = {
+const emptyForm: FormState = {
   type: 'open',
   title: '',
   body: '',
   image_url: '',
+  action_type: 'url',
   action_url: '',
   action_label: 'Selengkapnya',
+  click_area: null,
   is_active: true,
   show_once: false,
 };
+
+// ═══════════════════════════════════════════════════════════════
+//  VISUAL AREA PICKER COMPONENT
+// ═══════════════════════════════════════════════════════════════
+
+function ClickAreaPicker({
+  imageUrl,
+  clickArea,
+  onChange,
+}: {
+  imageUrl: string;
+  clickArea: ClickArea | null;
+  onChange: (area: ClickArea | null) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+  const [tempArea, setTempArea] = useState<ClickArea | null>(null);
+
+  const getRelativePos = useCallback((e: React.MouseEvent) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    return {
+      x: Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)),
+      y: Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100)),
+    };
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const pos = getRelativePos(e);
+    setDragStart(pos);
+    setIsDragging(true);
+    setTempArea(null);
+  }, [getRelativePos]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging || !dragStart) return;
+    const pos = getRelativePos(e);
+    const x = Math.min(dragStart.x, pos.x);
+    const y = Math.min(dragStart.y, pos.y);
+    const w = Math.abs(pos.x - dragStart.x);
+    const h = Math.abs(pos.y - dragStart.y);
+    setTempArea({ x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) });
+  }, [isDragging, dragStart, getRelativePos]);
+
+  const handleMouseUp = useCallback(() => {
+    if (tempArea && tempArea.w >= 3 && tempArea.h >= 3) {
+      onChange(tempArea);
+    }
+    setIsDragging(false);
+    setDragStart(null);
+    setTempArea(null);
+  }, [tempArea, onChange]);
+
+  const area = tempArea || clickArea;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-medium text-slate-600 flex items-center gap-1.5">
+          <MousePointer2 size={14} />
+          Area Klik pada Gambar
+        </label>
+        {clickArea && (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 transition-colors"
+          >
+            <RotateCcw size={12} /> Reset Area
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-slate-400">
+        Klik &amp; drag pada gambar untuk menandai area yang bisa diklik pengguna.
+        {!clickArea && ' Jika tidak diset, tombol aksi biasa akan ditampilkan.'}
+      </p>
+
+      <div
+        ref={containerRef}
+        className="relative select-none cursor-crosshair border-2 border-dashed border-slate-200 rounded-xl overflow-hidden bg-slate-50"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={() => {
+          if (isDragging) handleMouseUp();
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
+          alt="Preview popup"
+          className="w-full h-auto block pointer-events-none"
+          draggable={false}
+        />
+
+        {/* Area overlay */}
+        {area && (
+          <div
+            className="absolute border-2 border-blue-500 bg-blue-400/20 rounded-sm transition-all"
+            style={{
+              left: `${area.x}%`,
+              top: `${area.y}%`,
+              width: `${area.w}%`,
+              height: `${area.h}%`,
+            }}
+          >
+            {/* Corner indicators */}
+            <div className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-blue-500 rounded-full" />
+            <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full" />
+            <div className="absolute -bottom-1 -left-1 w-2.5 h-2.5 bg-blue-500 rounded-full" />
+            <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full" />
+            {/* Label */}
+            <div className="absolute top-1 left-1 bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+              KLIK
+            </div>
+          </div>
+        )}
+
+        {/* Guide overlay when no area set */}
+        {!area && !isDragging && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/5">
+            <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm text-xs text-slate-500 font-medium">
+              Drag untuk menandai area klik
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Coordinate display */}
+      {clickArea && (
+        <div className="flex gap-3 text-[10px] font-mono text-slate-400">
+          <span>X: {clickArea.x}%</span>
+          <span>Y: {clickArea.y}%</span>
+          <span>W: {clickArea.w}%</span>
+          <span>H: {clickArea.h}%</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ACTION TYPE BADGE
+// ═══════════════════════════════════════════════════════════════
+
+function ActionTypeBadge({ type }: { type: string }) {
+  const config: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
+    url: { color: 'bg-blue-50 text-blue-500', icon: <Globe size={10} />, label: 'URL' },
+    whatsapp: { color: 'bg-green-50 text-green-500', icon: <MessageCircle size={10} />, label: 'WhatsApp' },
+    screen: { color: 'bg-purple-50 text-purple-500', icon: <Layout size={10} />, label: 'In-App' },
+  };
+  const c = config[type] || config.url;
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${c.color}`}>
+      {c.icon} {c.label}
+    </span>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MAIN PAGE
+// ═══════════════════════════════════════════════════════════════
 
 export default function PopupsPage() {
   const [popups, setPopups] = useState<PopupItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [imageMode, setImageMode] = useState<'url' | 'upload'>('url');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchPopups = async () => {
     setLoading(true);
@@ -48,15 +249,61 @@ export default function PopupsPage() {
 
   useEffect(() => { fetchPopups(); }, []);
 
+  // ── Upload gambar ke Supabase Storage ──
+  const handleImageUpload = async () => {
+    const file = fileInputRef.current?.files?.[0];
+    if (!file) return;
+
+    // Validasi tipe file
+    if (!file.type.startsWith('image/')) {
+      alert('File harus berupa gambar (JPG, PNG, WebP, dll)');
+      return;
+    }
+    // Maks 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ukuran gambar maksimal 5 MB');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const fileName = `popups/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from('popup-images')
+        .upload(fileName, file, { upsert: true });
+
+      if (error) {
+        alert('Gagal upload: ' + error.message);
+      } else {
+        const { data: urlData } = supabase.storage
+          .from('popup-images')
+          .getPublicUrl(fileName);
+        setForm({ ...form, image_url: urlData.publicUrl, click_area: null });
+      }
+    } catch (e: any) {
+      alert('Error upload: ' + (e?.message || 'Unknown'));
+    }
+    setUploading(false);
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSave = async () => {
     setSaving(true);
+    const payload = {
+      ...form,
+      // Bersihkan action_url sesuai tipe
+      action_url: form.action_type === 'whatsapp'
+        ? form.action_url.replace(/\D/g, '') // Hanya angka untuk WA
+        : form.action_url,
+      updated_at: new Date().toISOString(),
+    };
     if (editId) {
-      await supabase.from('app_popups').update({
-        ...form,
-        updated_at: new Date().toISOString(),
-      }).eq('id', editId);
+      await supabase.from('app_popups').update(payload).eq('id', editId);
     } else {
-      await supabase.from('app_popups').insert(form);
+      await supabase.from('app_popups').insert(payload);
     }
     setSaving(false);
     setShowForm(false);
@@ -66,14 +313,16 @@ export default function PopupsPage() {
   };
 
   const handleEdit = (item: PopupItem) => {
-    setEditId(item.id);
+    setEditId(item.id!);
     setForm({
       type: item.type,
       title: item.title,
       body: item.body,
       image_url: item.image_url,
+      action_type: item.action_type || 'url',
       action_url: item.action_url,
       action_label: item.action_label,
+      click_area: item.click_area,
       is_active: item.is_active,
       show_once: item.show_once,
     });
@@ -91,9 +340,26 @@ export default function PopupsPage() {
     fetchPopups();
   };
 
+  // Helper: label aksi tujuan untuk list item
+  const getActionTarget = (item: PopupItem) => {
+    if (!item.action_url) return null;
+    switch (item.action_type) {
+      case 'whatsapp':
+        return `WA: ${item.action_url}`;
+      case 'screen': {
+        const screen = APP_SCREENS.find(s => s.value === item.action_url);
+        return screen ? `→ ${screen.label}` : `→ ${item.action_url}`;
+      }
+      default:
+        return item.action_url.length > 35
+          ? item.action_url.slice(0, 35) + '…'
+          : item.action_url;
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* ─── Header ─── */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600">
@@ -101,7 +367,7 @@ export default function PopupsPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-800">Popup Info</h1>
-            <p className="text-sm text-slate-400">Kelola popup saat buka & tutup aplikasi</p>
+            <p className="text-sm text-slate-400">Kelola popup saat buka &amp; tutup aplikasi</p>
           </div>
         </div>
         <button
@@ -112,11 +378,17 @@ export default function PopupsPage() {
         </button>
       </div>
 
-      {/* Form */}
+      {/* ─── Form ─── */}
       {showForm && (
-        <div className="bg-white rounded-xl border border-slate-100 p-6 space-y-4">
-          <h2 className="font-bold text-slate-700">{editId ? 'Edit Popup' : 'Buat Popup Baru'}</h2>
-          
+        <div className="bg-white rounded-xl border border-slate-100 p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold text-slate-700">{editId ? 'Edit Popup' : 'Buat Popup Baru'}</h2>
+            <button onClick={() => { setShowForm(false); setEditId(null); setForm(emptyForm); }} className="text-slate-300 hover:text-slate-500">
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Row 1: Tipe + Action Type */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-slate-600 block mb-1">Tipe Popup</label>
@@ -130,17 +402,20 @@ export default function PopupsPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-600 block mb-1">Label Tombol Aksi</label>
-              <input
-                type="text"
-                value={form.action_label}
-                onChange={(e) => setForm({ ...form, action_label: e.target.value })}
+              <label className="text-sm font-medium text-slate-600 block mb-1">Tipe Aksi</label>
+              <select
+                value={form.action_type}
+                onChange={(e) => setForm({ ...form, action_type: e.target.value as 'url' | 'whatsapp' | 'screen', action_url: '' })}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none"
-                placeholder="Selengkapnya"
-              />
+              >
+                <option value="url">🌐 Buka URL / Website</option>
+                <option value="whatsapp">💬 Buka WhatsApp</option>
+                <option value="screen">📱 Buka Halaman Aplikasi</option>
+              </select>
             </div>
           </div>
 
+          {/* Row 2: Judul */}
           <div>
             <label className="text-sm font-medium text-slate-600 block mb-1">Judul</label>
             <input
@@ -152,6 +427,7 @@ export default function PopupsPage() {
             />
           </div>
 
+          {/* Row 3: Body */}
           <div>
             <label className="text-sm font-medium text-slate-600 block mb-1">Isi Pesan</label>
             <textarea
@@ -163,29 +439,158 @@ export default function PopupsPage() {
             />
           </div>
 
+          {/* Row 4: Action URL / WhatsApp / Screen picker */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-slate-600 block mb-1">URL Gambar (opsional)</label>
-              <input
-                type="url"
-                value={form.image_url}
-                onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none"
-                placeholder="https://..."
-              />
+              <label className="text-sm font-medium text-slate-600 block mb-1">
+                {form.action_type === 'url' && 'URL Tujuan'}
+                {form.action_type === 'whatsapp' && 'Nomor WhatsApp'}
+                {form.action_type === 'screen' && 'Halaman Aplikasi'}
+              </label>
+              {form.action_type === 'screen' ? (
+                <select
+                  value={form.action_url}
+                  onChange={(e) => setForm({ ...form, action_url: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none"
+                >
+                  <option value="">— Pilih Halaman —</option>
+                  {Object.entries(
+                    APP_SCREENS.reduce<Record<string, typeof APP_SCREENS>>((acc, s) => {
+                      (acc[s.group] ??= []).push(s);
+                      return acc;
+                    }, {})
+                  ).map(([group, screens]) => (
+                    <optgroup key={group} label={group}>
+                      {screens.map((s) => (
+                        <option key={s.value} value={s.value}>{s.label}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type={form.action_type === 'url' ? 'url' : 'tel'}
+                  value={form.action_url}
+                  onChange={(e) => setForm({ ...form, action_url: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none"
+                  placeholder={
+                    form.action_type === 'url'
+                      ? 'https://link-tujuan.com'
+                      : '6281234567890 (awali dengan 62)'
+                  }
+                />
+              )}
+              {form.action_type === 'whatsapp' && (
+                <p className="text-[10px] text-slate-400 mt-1">Format: 628xxxx (tanpa + atau 0 di awal)</p>
+              )}
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-600 block mb-1">URL Aksi (opsional)</label>
+              <label className="text-sm font-medium text-slate-600 block mb-1">Label Tombol Aksi</label>
               <input
-                type="url"
-                value={form.action_url}
-                onChange={(e) => setForm({ ...form, action_url: e.target.value })}
+                type="text"
+                value={form.action_label}
+                onChange={(e) => setForm({ ...form, action_label: e.target.value })}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none"
-                placeholder="https://link-tujuan.com"
+                placeholder={
+                  form.action_type === 'whatsapp'
+                    ? 'Chat via WhatsApp'
+                    : form.action_type === 'screen'
+                    ? 'Buka Halaman'
+                    : 'Selengkapnya'
+                }
               />
             </div>
           </div>
 
+          {/* Row 5: Image — URL atau Upload */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-slate-600">Gambar Poster (opsional)</label>
+              <div className="flex bg-slate-100 rounded-lg p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setImageMode('url')}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                    imageMode === 'url' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <Link2 size={12} /> URL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageMode('upload')}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                    imageMode === 'upload' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <Upload size={12} /> Upload
+                </button>
+              </div>
+            </div>
+
+            {imageMode === 'url' ? (
+              <input
+                type="url"
+                value={form.image_url}
+                onChange={(e) => setForm({ ...form, image_url: e.target.value, click_area: null })}
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none"
+                placeholder="https://link-gambar.com/poster.jpg"
+              />
+            ) : (
+              <div className="flex items-center gap-3">
+                <label className="flex-1 relative cursor-pointer">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="sr-only"
+                  />
+                  <div className="w-full px-4 py-2.5 border-2 border-dashed border-slate-200 rounded-xl text-sm text-slate-400 hover:border-purple-300 hover:text-purple-500 transition-colors flex items-center justify-center gap-2">
+                    {uploading ? (
+                      <><span className="animate-spin">⏳</span> Mengupload...</>
+                    ) : (
+                      <><ImageIcon size={16} /> Klik untuk pilih gambar (maks 5MB)</>
+                    )}
+                  </div>
+                </label>
+              </div>
+            )}
+
+            {/* Preview gambar */}
+            {form.image_url && (
+              <div className="relative group">
+                <div className="border border-slate-100 rounded-xl overflow-hidden bg-slate-50">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={form.image_url}
+                    alt="Preview poster"
+                    className="w-full max-h-48 object-contain"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, image_url: '', click_area: null })}
+                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Hapus gambar"
+                >
+                  <X size={14} />
+                </button>
+                <p className="text-[10px] text-slate-400 mt-1 truncate">{form.image_url}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Row 6: Visual Area Picker (only if image exists) */}
+          {form.image_url && (
+            <ClickAreaPicker
+              imageUrl={form.image_url}
+              clickArea={form.click_area}
+              onChange={(area) => setForm({ ...form, click_area: area })}
+            />
+          )}
+
+          {/* Row 7: Checkboxes */}
           <div className="flex items-center gap-6">
             <label className="flex items-center gap-2 text-sm text-slate-600">
               <input
@@ -207,6 +612,7 @@ export default function PopupsPage() {
             </label>
           </div>
 
+          {/* Row 8: Buttons */}
           <div className="flex gap-3 pt-2">
             <button
               onClick={handleSave}
@@ -225,7 +631,7 @@ export default function PopupsPage() {
         </div>
       )}
 
-      {/* List */}
+      {/* ─── List ─── */}
       {loading ? (
         <div className="text-center py-16 text-slate-400">Memuat data...</div>
       ) : popups.length === 0 ? (
@@ -238,14 +644,14 @@ export default function PopupsPage() {
           {popups.map((item) => (
             <div key={item.id} className="bg-white rounded-xl border border-slate-100 px-6 py-4 flex items-center gap-4">
               {/* Type badge */}
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                 item.type === 'open' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-400'
               }`}>
                 {item.type === 'open' ? <Smartphone size={18} /> : <LogOutIcon size={18} />}
               </div>
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-bold text-slate-700 text-sm truncate">{item.title}</span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                     item.type === 'open'
@@ -254,16 +660,27 @@ export default function PopupsPage() {
                   }`}>
                     {item.type === 'open' ? 'BUKA APP' : 'TUTUP APP'}
                   </span>
+                  {item.action_url && <ActionTypeBadge type={item.action_type || 'url'} />}
                   {item.show_once && (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-400">1x</span>
                   )}
+                  {item.click_area && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-500 flex items-center gap-0.5">
+                      <MousePointer2 size={8} /> AREA
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-slate-400 truncate mt-0.5">{item.body || '-'}</p>
+                <p className="text-xs text-slate-400 truncate mt-0.5">
+                  {item.body || '-'}
+                  {getActionTarget(item) && (
+                    <span className="ml-2 text-slate-300">• {getActionTarget(item)}</span>
+                  )}
+                </p>
               </div>
               {/* Actions */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
-                  onClick={() => toggleActive(item.id, item.is_active)}
+                  onClick={() => toggleActive(item.id!, item.is_active)}
                   className="p-2 rounded-lg hover:bg-slate-50 transition-colors"
                   title={item.is_active ? 'Nonaktifkan' : 'Aktifkan'}
                 >
@@ -278,7 +695,7 @@ export default function PopupsPage() {
                   <Edit size={16} />
                 </button>
                 <button
-                  onClick={() => handleDelete(item.id)}
+                  onClick={() => handleDelete(item.id!)}
                   className="p-2 rounded-lg hover:bg-red-50 transition-colors text-red-400"
                 >
                   <Trash2 size={16} />
