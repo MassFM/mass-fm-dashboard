@@ -236,3 +236,53 @@ export interface GreetingCard {
   season_end?: string | null;
   sort_order: number;
 }
+
+// ─── EVENTS (Acara / Kajian Akbar) ─────────────────────────
+
+export interface Event {
+  id?: number;
+  created_at?: string;
+  updated_at?: string;
+  title: string;
+  description: string;
+  kategori: string;
+  poster_url: string;
+  tanggal_mulai: string;
+  tanggal_selesai: string;
+  jam_mulai: string;
+  jam_selesai: string;
+  tempat: string;
+  alamat: string;
+  provinsi: string;
+  kota: string;
+  latitude: number | null;
+  longitude: number | null;
+  pemateri: string;
+  contact_person: string;
+  contact_phone: string;
+  registration_url: string;
+  is_featured: boolean;
+  is_free: boolean;
+  is_active: boolean;
+  sort_order: number;
+}
+
+// ─── EBOOKS (Ebook Islami) ──────────────────────────────────
+
+export interface Ebook {
+  id?: number;
+  created_at?: string;
+  updated_at?: string;
+  title: string;
+  author: string;
+  description: string;
+  kategori: string;
+  thumbnail_url: string;
+  file_url: string;
+  total_pages: number;
+  file_size_mb: number;
+  download_count: number;
+  is_featured: boolean;
+  is_active: boolean;
+  sort_order: number;
+}

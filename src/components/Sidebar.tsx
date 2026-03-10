@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Calendar, Image as ImageIcon, Heart, LogOut, Radio, MessageSquare, MessageCircleQuestion, Headphones, BarChart3, Bell, MapPin, Settings, MessageSquareDashed, MessageCircle, BookOpen, CalendarClock, AlertTriangle, Share2, MessageSquareText, Moon, Menu, Clock, Star, Smartphone, Palette, Play, PartyPopper, FolderOpen } from 'lucide-react';
+import { Calendar, Image as ImageIcon, Heart, LogOut, Radio, MessageSquare, MessageCircleQuestion, Headphones, BarChart3, Bell, MapPin, Settings, MessageSquareDashed, MessageCircle, BookOpen, BookOpenCheck, CalendarClock, AlertTriangle, Share2, MessageSquareText, Moon, Menu, Clock, Star, Smartphone, Palette, Play, PartyPopper, FolderOpen, CalendarDays } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -28,6 +28,8 @@ const menuGroups: MenuGroup[] = [
       { name: 'Kartu Ucapan', href: '/dashboard/kartu-ucapan', icon: PartyPopper },
       { name: 'Podcast', href: '/dashboard/podcast', icon: Headphones },
       { name: 'Kajian Offline', href: '/dashboard/kajian-offline', icon: MapPin },
+      { name: 'Event & Acara', href: '/dashboard/events', icon: CalendarDays },
+      { name: 'Ebook Islami', href: '/dashboard/ebooks', icon: BookOpenCheck },
     ],
   },
   {
