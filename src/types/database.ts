@@ -310,3 +310,59 @@ export interface PopupItem {
   is_active: boolean;
   show_once: boolean;
 }
+
+// ─── MITRA DAKWAH (ADS / PARTNER) ──────────────────────────
+
+export interface Ad {
+  id?: string;
+  created_at?: string;
+  updated_at?: string;
+  client_name: string;
+  client_phone: string;
+  client_email: string;
+  package_type: 'banner' | 'interstitial' | 'featured' | 'premium';
+  title: string;
+  description: string;
+  image_url: string;
+  landing_url: string;
+  action_type: 'webview' | 'url' | 'whatsapp' | 'screen';
+  click_area: ClickArea | null;
+  category: string;
+  placement: 'catalog' | 'interstitial_open' | 'interstitial_close' | 'interstitial_transition';
+  start_date: string;
+  expiry_date: string;
+  is_active: boolean;
+  is_featured: boolean;
+  sort_order: number;
+  priority: number;
+  show_duration_seconds: number;
+  max_impressions_per_day: number;
+}
+
+export interface AdAnalytics {
+  id?: number;
+  ad_id: string;
+  date: string;
+  views: number;
+  clicks: number;
+  unique_views: number;
+  created_at?: string;
+}
+
+export interface AdPricing {
+  name: string;
+  price: string;
+  description: string;
+}
+
+export interface AdsConfig {
+  is_enabled: boolean;
+  interstitial_enabled: boolean;
+  interstitial_throttle_minutes: number;
+  catalog_title: string;
+  catalog_subtitle: string;
+  regulations_html: string;
+  pricing: AdPricing[];
+  contact_whatsapp: string;
+  contact_text: string;
+}

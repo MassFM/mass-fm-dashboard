@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Calendar, Image as ImageIcon, Heart, LogOut, Radio, MessageSquare, MessageCircleQuestion, Headphones, BarChart3, Bell, MapPin, Settings, MessageSquareDashed, MessageCircle, BookOpen, BookOpenCheck, CalendarClock, AlertTriangle, Share2, MessageSquareText, Moon, Menu, Clock, Star, Smartphone, Palette, Play, PartyPopper, FolderOpen, CalendarDays } from 'lucide-react';
+import { Calendar, Image as ImageIcon, Heart, LogOut, Radio, MessageSquare, MessageCircleQuestion, Headphones, BarChart3, Bell, MapPin, Settings, MessageSquareDashed, MessageCircle, BookOpen, BookOpenCheck, CalendarClock, AlertTriangle, Share2, MessageSquareText, Moon, Menu, Clock, Star, Smartphone, Palette, Play, PartyPopper, FolderOpen, CalendarDays, FileImage, Megaphone, LineChart, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -59,6 +59,14 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    label: 'Mitra Dakwah',
+    items: [
+      { name: 'Kelola Iklan', href: '/dashboard/mitra-dakwah', icon: Megaphone },
+      { name: 'Analytics Iklan', href: '/dashboard/mitra-dakwah/analytics', icon: LineChart },
+      { name: 'Regulasi & Harga', href: '/dashboard/mitra-dakwah/regulations', icon: FileText },
+    ],
+  },
+  {
     label: 'Data & Laporan',
     items: [
       { name: 'Data Donasi', href: '/dashboard/donasi', icon: Heart },
@@ -72,6 +80,7 @@ const menuGroups: MenuGroup[] = [
       { name: 'Splash Screen', href: '/dashboard/splash-settings', icon: Smartphone },
       { name: 'Tema Widget Info', href: '/dashboard/widget-theme', icon: Palette },
       { name: 'Tema Widget Player', href: '/dashboard/player-theme', icon: Play },
+      { name: 'Poster Jadwal', href: '/dashboard/poster-jadwal', icon: FileImage },
     ],
   },
   {
