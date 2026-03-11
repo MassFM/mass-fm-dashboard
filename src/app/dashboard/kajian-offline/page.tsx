@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Plus, Pencil, Trash2, MapPin, Phone, BookOpen, Radio, X, Map, Tag, Users, Loader2 } from 'lucide-react';
 
 interface KajianOffline {
-  id?: number;
+  id?: string;
   title: string;
   pemateri: string;
   materi: string;
@@ -29,6 +29,7 @@ interface KajianOffline {
   desa: string;
   kategori: string;
   audience: string;
+  pekan: string;
   created_at?: string;
 }
 
@@ -43,7 +44,7 @@ const emptyForm: KajianOffline = {
   title: '', pemateri: '', materi: '', description: '', tempat: '', alamat: '',
   latitude: null, longitude: null, contact_person: '', contact_phone: '',
   hari: '', jam: '', is_relay: false, kitab_name: '', file_url: '', image_url: '', is_active: true,
-  provinsi: '', kota: '', kecamatan: '', desa: '', kategori: '', audience: 'Umum',
+  provinsi: '', kota: '', kecamatan: '', desa: '', kategori: '', audience: 'Umum', pekan: 'semua',
 };
 
 const HARI_OPTIONS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'];
@@ -57,8 +58,8 @@ export default function KajianOfflinePage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<KajianOffline>(emptyForm);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [kategoriOptions, setKategoriOptions] = useState<string[]>(DEFAULT_KATEGORI);
   const [kategoriMode, setKategoriMode] = useState<'select'|'add'|'manage'>('select');
@@ -154,19 +155,28 @@ export default function KajianOfflinePage() {
       desa: form.desa.trim(),
       kategori: form.kategori,
       audience: form.audience,
+      pekan: form.pekan,
     };
 
+    let error;
     if (editingId) {
-      await supabase.from('kajian_offline').update(payload).eq('id', editingId);
+      const res = await supabase.from('kajian_offline').update(payload).eq('id', editingId);
+      error = res.error;
     } else {
-      await supabase.from('kajian_offline').insert(payload);
+      const res = await supabase.from('kajian_offline').insert(payload);
+      error = res.error;
     }
     setSaving(false);
+    if (error) {
+      console.error('Save error:', error);
+      alert('Gagal menyimpan: ' + error.message);
+      return;
+    }
     closeForm();
     fetchData();
   };
 
-  const deleteItem = async (id: number) => {
+  const deleteItem = async (id: string) => {
     await supabase.from('kajian_offline').delete().eq('id', id);
     setDeletingId(null);
     fetchData();
@@ -480,6 +490,39 @@ export default function KajianOfflinePage() {
                   {AUDIENCE_OPTIONS.map(a => <option key={a} value={a}>{a}</option>)}
                 </select>
               </div>
+              {/* Pekan / Minggu Ke- */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Pekan / Minggu Ke-</label>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => updateField('pekan', 'semua')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                      form.pekan === 'semua'
+                        ? 'bg-purple-600 text-white border-purple-600'
+                        : 'bg-white text-slate-500 border-slate-200 hover:border-purple-300'
+                    }`}>Setiap Pekan</button>
+                  {[1,2,3,4,5].map(w => {
+                    const weeks = form.pekan === 'semua' ? [] : form.pekan.split(',').map(Number).filter(Boolean);
+                    const isActive = weeks.includes(w);
+                    return (
+                      <button key={w} type="button" onClick={() => {
+                        let next: number[];
+                        if (isActive) {
+                          next = weeks.filter(x => x !== w);
+                        } else {
+                          next = [...weeks, w].sort();
+                        }
+                        updateField('pekan', next.length === 0 ? 'semua' : next.join(','));
+                      }}
+                        className={`w-9 h-9 rounded-lg text-xs font-bold border transition-colors ${
+                          isActive
+                            ? 'bg-purple-600 text-white border-purple-600'
+                            : 'bg-white text-slate-500 border-slate-200 hover:border-purple-300'
+                        }`}>{w}</button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Kosongkan / pilih &quot;Setiap Pekan&quot; jika berlaku setiap minggu</p>
+              </div>
               <div className="md:col-span-2 flex items-center gap-6">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={form.is_relay} onChange={e => updateField('is_relay', e.target.checked)}
@@ -554,6 +597,9 @@ export default function KajianOfflinePage() {
                         <span className="flex items-center gap-1"><MapPin size={11} /> {item.tempat}</span>
                       )}
                       {item.hari && <span>📅 {item.hari}, {item.jam}</span>}
+                      {item.pekan && item.pekan !== 'semua' && (
+                        <span className="px-1.5 py-0.5 bg-purple-100 text-purple-600 text-[10px] font-bold rounded-full">Pekan {item.pekan}</span>
+                      )}
                       {item.kategori && (
                         <span className="flex items-center gap-1"><Tag size={11} className="text-teal-400" /> {item.kategori}</span>
                       )}

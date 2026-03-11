@@ -123,8 +123,15 @@ export default function MitraDakwahPage() {
       .from('media')
       .upload(fileName, file, { upsert: true });
 
-    if (!uploadError) {
-      const { data: urlData } = supabase.storage.from('media').getPublicUrl(fileName);
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      alert('Gagal upload gambar: ' + uploadError.message);
+      setUploading(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from('media').getPublicUrl(fileName);
+    if (urlData?.publicUrl) {
       setForm(prev => ({ ...prev, image_url: urlData.publicUrl }));
     }
     setUploading(false);
