@@ -15,15 +15,16 @@ const defaultConfig: AdsConfig = {
   interstitial_throttle_minutes: 30,
   catalog_title: 'Mitra Dakwah',
   catalog_subtitle: 'Partner & Iklan Radio Mass FM',
-  regulations_html: '<h3>Ketentuan Iklan Radio Mass FM</h3><p>Hubungi admin untuk informasi lebih lanjut.</p>',
+  regulations_html: '<p>Hubungi admin untuk informasi lebih lanjut.</p>',
   pricing: [
     { name: 'Banner', price: 'Rp 100.000/bulan', description: 'Tampil di katalog iklan' },
     { name: 'Interstitial', price: 'Rp 250.000/bulan', description: 'Popup saat buka/tutup/transisi' },
+    { name: 'Home Slider', price: 'Rp 350.000/bulan', description: 'Tampil di slider utama halaman depan' },
     { name: 'Featured', price: 'Rp 500.000/bulan', description: 'Highlight di carousel + katalog' },
-    { name: 'Premium', price: 'Rp 1.000.000/bulan', description: 'Featured + Interstitial + Prioritas' },
+    { name: 'Premium', price: 'Rp 1.500.000/bulan', description: 'Featured + Home Slider + Interstitial + Prioritas' },
   ],
   contact_whatsapp: '6281234567890',
-  contact_text: 'Hubungi kami untuk beriklan',
+  contact_text: 'Hubungi Kami untuk beriklan',
 };
 
 export default function MitraDakwahRegulationsPage() {
@@ -285,7 +286,7 @@ export default function MitraDakwahRegulationsPage() {
               value={config.contact_text}
               onChange={e => setConfig(prev => ({ ...prev, contact_text: e.target.value }))}
               className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
-              placeholder="Hubungi kami untuk beriklan"
+              placeholder="Hubungi Kami untuk beriklan"
             />
           </div>
         </div>

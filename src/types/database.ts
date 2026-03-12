@@ -366,3 +366,24 @@ export interface AdsConfig {
   contact_whatsapp: string;
   contact_text: string;
 }
+
+// ─── HOME SLIDES (Slider Variatif) ─────────────────────────
+
+export interface HomeSlide {
+  id?: number;
+  content_type: string;
+  content_id?: string | null;
+  image_url: string;
+  title: string;
+  subtitle: string;
+  badge_text: string;
+  badge_color: string;
+  action_type: string;
+  action_data: string;
+  is_active: boolean;
+  sort_order: number;
+  start_date?: string | null;
+  end_date?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
