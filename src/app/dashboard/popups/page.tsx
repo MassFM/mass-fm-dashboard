@@ -25,8 +25,7 @@ const APP_SCREENS: { value: string; label: string; group: string }[] = [
   // Kajian & Konten
   { value: 'podcast', label: 'Podcast', group: 'Kajian & Konten' },
   { value: 'ebook', label: 'Ebook Islami', group: 'Kajian & Konten' },
-  { value: 'kajian_offline', label: 'Kajian Offline', group: 'Kajian & Konten' },
-  { value: 'kalender_kajian', label: 'Kalender Kajian', group: 'Kajian & Konten' },
+  { value: 'kajian_offline', label: 'Kajian Rutin', group: 'Kajian & Konten' },
   { value: 'greeting_card', label: 'Kartu Ucapan', group: 'Kajian & Konten' },
   { value: 'event', label: 'Event & Acara', group: 'Kajian & Konten' },
   // Lainnya

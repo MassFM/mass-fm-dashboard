@@ -16,7 +16,7 @@ const CONTENT_TYPES = [
   { value: 'poster', label: 'Poster Dakwah', color: '#822a6e' },
   { value: 'ad', label: 'Iklan', color: '#e67e22' },
   { value: 'mimbar', label: 'Mimbar', color: '#2ecc71' },
-  { value: 'kajian', label: 'Kajian Offline', color: '#3498db' },
+  { value: 'kajian', label: 'Kajian Rutin', color: '#3498db' },
   { value: 'doa', label: 'Doa', color: '#9b59b6' },
   { value: 'dzikir', label: 'Dzikir', color: '#1abc9c' },
   { value: 'info', label: 'Informasi', color: '#f39c12' },
@@ -691,7 +691,7 @@ export default function HomeSlides() {
                   >
                     <option value="">Otomatis (berdasarkan tipe konten)</option>
                     <option value="mitra_dakwah">Mitra Dakwah (Iklan)</option>
-                    <option value="kajian_offline">Kajian Offline</option>
+                    <option value="kajian_offline">Kajian Rutin</option>
                     <option value="doa">Doa Harian</option>
                     <option value="dzikir">Dzikir Harian</option>
                     <option value="mimbar">Mimbar</option>

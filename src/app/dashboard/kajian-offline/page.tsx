@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Pencil, Trash2, MapPin, Phone, BookOpen, Radio, X, Map, Tag, Users, Loader2, Copy } from 'lucide-react';
+import { Plus, Pencil, Trash2, MapPin, Phone, BookOpen, Radio, X, Map, Tag, Users, Loader2, Copy, Navigation } from 'lucide-react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 interface KajianOffline {
   id?: string;
@@ -78,6 +80,76 @@ export default function KajianOfflinePage() {
   const [selDistId, setSelDistId] = useState<string>('');
   const [loadingRegion, setLoadingRegion] = useState<string>('');
 
+  // Map picker state
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
+  const [showMapPicker, setShowMapPicker] = useState(false);
+
+  // Initialize / destroy Leaflet map
+  useEffect(() => {
+    if (!showMapPicker || !mapContainerRef.current) return;
+    // Avoid double-init
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.invalidateSize();
+      return;
+    }
+    const defaultLat = form.latitude ?? -7.43;
+    const defaultLng = form.longitude ?? 110.84;
+    const map = L.map(mapContainerRef.current, { attributionControl: false }).setView([defaultLat, defaultLng], form.latitude ? 15 : 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    mapInstanceRef.current = map;
+
+    // Custom marker icon (fix default icon issue with bundlers)
+    const icon = L.icon({
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
+    });
+
+    if (form.latitude && form.longitude) {
+      markerRef.current = L.marker([form.latitude, form.longitude], { icon }).addTo(map);
+    }
+
+    map.on('click', (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      updateField('latitude', parseFloat(lat.toFixed(7)));
+      updateField('longitude', parseFloat(lng.toFixed(7)));
+      if (markerRef.current) {
+        markerRef.current.setLatLng([lat, lng]);
+      } else {
+        markerRef.current = L.marker([lat, lng], { icon }).addTo(map);
+      }
+    });
+
+    return () => {
+      map.remove();
+      mapInstanceRef.current = null;
+      markerRef.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showMapPicker]);
+
+  // Sync marker when form lat/lng changes from manual input
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    if (form.latitude && form.longitude) {
+      const icon = L.icon({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
+      });
+      if (markerRef.current) {
+        markerRef.current.setLatLng([form.latitude, form.longitude]);
+      } else {
+        markerRef.current = L.marker([form.latitude, form.longitude], { icon }).addTo(mapInstanceRef.current);
+      }
+      mapInstanceRef.current.setView([form.latitude, form.longitude], 15);
+    }
+  }, [form.latitude, form.longitude]);
+
   const fetchRegion = useCallback(async (endpoint: string): Promise<RegionItem[]> => {
     try {
       const res = await fetch(`${REGION_API}${endpoint}`);
@@ -138,6 +210,7 @@ export default function KajianOfflinePage() {
     setShowForm(false);
     setEditingId(null);
     setForm(emptyForm);
+    setShowMapPicker(false);
   };
 
   const saveForm = async () => {
@@ -206,8 +279,8 @@ export default function KajianOfflinePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold text-slate-800">Kajian Offline</h1>
-          <p className="text-sm text-slate-400 mt-1">Kelola jadwal kajian offline seluruh Indonesia</p>
+          <h1 className="text-2xl font-display font-bold text-slate-800">Kajian Rutin</h1>
+          <p className="text-sm text-slate-400 mt-1">Kelola jadwal kajian rutin seluruh Indonesia</p>
         </div>
         <button onClick={openAdd}
           className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
@@ -270,15 +343,32 @@ export default function KajianOfflinePage() {
                 <input type="text" value={form.jam} onChange={e => updateField('jam', e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none" placeholder="Contoh: 06:00 - 07:30" />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">Latitude</label>
-                <input type="number" step="any" value={form.latitude ?? ''} onChange={e => updateField('latitude', e.target.value ? parseFloat(e.target.value) : null)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none" placeholder="-7.4300" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">Longitude</label>
-                <input type="number" step="any" value={form.longitude ?? ''} onChange={e => updateField('longitude', e.target.value ? parseFloat(e.target.value) : null)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none" placeholder="111.0100" />
+              <div className="md:col-span-2">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-500">Lokasi (Latitude & Longitude)</label>
+                  <button type="button" onClick={() => { setShowMapPicker(v => !v); setTimeout(() => mapInstanceRef.current?.invalidateSize(), 200); }}
+                    className="flex items-center gap-1 text-[10px] text-purple-500 hover:text-purple-700 font-semibold">
+                    <Navigation size={10} />{showMapPicker ? 'Sembunyikan Peta' : 'Pilih di Peta'}
+                  </button>
+                </div>
+                {showMapPicker && (
+                  <div className="mb-3 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                    <div ref={mapContainerRef} style={{ height: 260, width: '100%' }} />
+                    <p className="text-[10px] text-slate-400 text-center py-1 bg-slate-50">Klik pada peta untuk menentukan titik lokasi</p>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-0.5">Latitude</label>
+                    <input type="number" step="any" value={form.latitude ?? ''} onChange={e => updateField('latitude', e.target.value ? parseFloat(e.target.value) : null)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none" placeholder="-7.4300" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-0.5">Longitude</label>
+                    <input type="number" step="any" value={form.longitude ?? ''} onChange={e => updateField('longitude', e.target.value ? parseFloat(e.target.value) : null)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none" placeholder="111.0100" />
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Contact Person</label>
@@ -575,7 +665,7 @@ export default function KajianOfflinePage() {
         <div className="text-center py-16 text-slate-400">Memuat data...</div>
       ) : data.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-slate-400 text-sm">Belum ada data kajian offline</p>
+          <p className="text-slate-400 text-sm">Belum ada data kajian rutin</p>
           <p className="text-slate-300 text-xs mt-1">Klik tombol &quot;Tambah Kajian&quot; untuk memulai</p>
         </div>
       ) : (

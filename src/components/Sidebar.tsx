@@ -27,7 +27,7 @@ const menuGroups: MenuGroup[] = [
       { name: 'Share Poster', href: '/dashboard/poster/share-settings', icon: Share2 },
       { name: 'Kartu Ucapan', href: '/dashboard/kartu-ucapan', icon: PartyPopper },
       { name: 'Podcast', href: '/dashboard/podcast', icon: Headphones },
-      { name: 'Kajian Offline', href: '/dashboard/kajian-offline', icon: MapPin },
+      { name: 'Kajian Rutin', href: '/dashboard/kajian-offline', icon: MapPin },
       { name: 'Event & Acara', href: '/dashboard/events', icon: CalendarDays },
       { name: 'Ebook Islami', href: '/dashboard/ebooks', icon: BookOpenCheck },
       { name: 'Mimbar', href: '/dashboard/mimbar', icon: Mic },

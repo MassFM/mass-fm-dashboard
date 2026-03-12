@@ -586,7 +586,7 @@ export default function KelolaJadwal() {
               <div className="border-t border-slate-50 pt-4 space-y-2">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={isRelay} onChange={(e) => setIsRelay(e.target.checked)} className="w-4 h-4 text-purple-600 rounded" />
-                  <span className="text-xs text-slate-600 font-medium">Relay dari kajian offline</span>
+                  <span className="text-xs text-slate-600 font-medium">Relay dari kajian rutin</span>
                 </label>
               </div>
               <button type="submit" className={`w-full text-white font-bold py-3 rounded-2xl transition-all shadow-md ${editingId ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-secondary'}`}>
