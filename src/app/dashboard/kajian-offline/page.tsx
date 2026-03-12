@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Pencil, Trash2, MapPin, Phone, BookOpen, Radio, X, Map, Tag, Users, Loader2, Copy, Navigation } from 'lucide-react';
+import { Plus, Pencil, Trash2, MapPin, Phone, BookOpen, Radio, X, Map, Tag, Users, Loader2, Copy, Navigation, Search } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -85,6 +85,52 @@ export default function KajianOfflinePage() {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
   const [showMapPicker, setShowMapPicker] = useState(false);
+  const [mapSearchQuery, setMapSearchQuery] = useState('');
+  const [mapSearching, setMapSearching] = useState(false);
+  const [mapSearchResults, setMapSearchResults] = useState<{ display_name: string; lat: string; lon: string }[]>([]);
+
+  // Geocode search using Nominatim
+  async function handleMapSearch(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!mapSearchQuery.trim()) return;
+    setMapSearching(true);
+    setMapSearchResults([]);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(mapSearchQuery)}&limit=5&countrycodes=id`,
+        { headers: { 'Accept-Language': 'id' } }
+      );
+      const data = await res.json();
+      setMapSearchResults(data);
+    } catch {
+      setMapSearchResults([]);
+    }
+    setMapSearching(false);
+  }
+
+  function selectMapSearchResult(lat: string, lon: string) {
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lon);
+    updateField('latitude', parseFloat(latNum.toFixed(7)));
+    updateField('longitude', parseFloat(lngNum.toFixed(7)));
+    setMapSearchResults([]);
+    setMapSearchQuery('');
+    // Pan map
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setView([latNum, lngNum], 16);
+      const icon = L.icon({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
+      });
+      if (markerRef.current) {
+        markerRef.current.setLatLng([latNum, lngNum]);
+      } else {
+        markerRef.current = L.marker([latNum, lngNum], { icon }).addTo(mapInstanceRef.current);
+      }
+    }
+  }
 
   // Initialize / destroy Leaflet map
   useEffect(() => {
@@ -353,6 +399,37 @@ export default function KajianOfflinePage() {
                 </div>
                 {showMapPicker && (
                   <div className="mb-3 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                    {/* Map Search */}
+                    <form onSubmit={handleMapSearch} className="flex items-center gap-2 p-2 bg-white border-b border-slate-100">
+                      <div className="relative flex-1">
+                        <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          value={mapSearchQuery}
+                          onChange={e => setMapSearchQuery(e.target.value)}
+                          placeholder="Cari lokasi..."
+                          className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:ring-2 focus:ring-purple-200 outline-none"
+                        />
+                      </div>
+                      <button type="submit" disabled={mapSearching || !mapSearchQuery.trim()}
+                        className="px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 disabled:opacity-50 transition flex items-center gap-1">
+                        {mapSearching ? <Loader2 size={12} className="animate-spin" /> : <Search size={12} />}
+                        Cari
+                      </button>
+                    </form>
+                    {/* Search Results */}
+                    {mapSearchResults.length > 0 && (
+                      <div className="max-h-36 overflow-y-auto bg-white border-b border-slate-100">
+                        {mapSearchResults.map((r, i) => (
+                          <button key={i} type="button"
+                            onClick={() => selectMapSearchResult(r.lat, r.lon)}
+                            className="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-purple-50 transition border-b border-slate-50 last:border-0 flex items-start gap-2">
+                            <MapPin size={12} className="text-purple-500 mt-0.5 flex-shrink-0" />
+                            <span className="line-clamp-2">{r.display_name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <div ref={mapContainerRef} style={{ height: 260, width: '100%' }} />
                     <p className="text-[10px] text-slate-400 text-center py-1 bg-slate-50">Klik pada peta untuk menentukan titik lokasi</p>
                   </div>

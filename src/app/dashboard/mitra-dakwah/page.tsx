@@ -15,12 +15,14 @@ import Link from 'next/link';
 const PACKAGE_TYPES = [
   { value: 'banner', label: 'Banner', desc: 'Tampil di katalog iklan' },
   { value: 'interstitial', label: 'Interstitial', desc: 'Popup saat buka/tutup/transisi' },
+  { value: 'home_slider', label: 'Home Slider', desc: 'Tampil di slider utama halaman depan' },
   { value: 'featured', label: 'Featured', desc: 'Highlight di carousel + katalog' },
-  { value: 'premium', label: 'Premium', desc: 'Featured + Interstitial + Prioritas' },
+  { value: 'premium', label: 'Premium', desc: 'Featured + Home Slider + Interstitial + Prioritas' },
 ];
 
 const PLACEMENTS = [
   { value: 'catalog', label: 'Katalog' },
+  { value: 'home_slider', label: 'Home Slider' },
   { value: 'interstitial_open', label: 'Interstitial - Buka App' },
   { value: 'interstitial_close', label: 'Interstitial - Tutup App' },
   { value: 'interstitial_transition', label: 'Interstitial - Transisi' },
@@ -42,14 +44,14 @@ type FormState = {
   client_name: string;
   client_phone: string;
   client_email: string;
-  package_type: 'banner' | 'interstitial' | 'featured' | 'premium';
+  package_type: 'banner' | 'interstitial' | 'home_slider' | 'featured' | 'premium';
   title: string;
   description: string;
   image_url: string;
   landing_url: string;
   action_type: 'webview' | 'url' | 'whatsapp' | 'screen';
   category: string;
-  placement: 'catalog' | 'interstitial_open' | 'interstitial_close' | 'interstitial_transition';
+  placement: 'catalog' | 'home_slider' | 'interstitial_open' | 'interstitial_close' | 'interstitial_transition';
   start_date: string;
   expiry_date: string;
   is_active: boolean;

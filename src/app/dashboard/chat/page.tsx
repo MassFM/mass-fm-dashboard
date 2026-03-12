@@ -40,7 +40,12 @@ export default function ChatPage() {
   }, []);
 
   const deleteMsg = async (id: number) => {
-    await supabase.from('chat_messages').delete().eq('id', id);
+    const { error } = await supabase.from('chat_messages').delete().eq('id', id);
+    if (error) {
+      alert(`Gagal menghapus pesan: ${error.message}`);
+      return;
+    }
+    fetchMessages();
   };
 
   const togglePin = async (id: number, current: boolean) => {
@@ -50,7 +55,11 @@ export default function ChatPage() {
 
   const clearAll = async () => {
     if (!confirm('Hapus semua pesan chat? Tindakan ini tidak bisa dibatalkan.')) return;
-    await supabase.from('chat_messages').delete().neq('id', 0);
+    const { error } = await supabase.from('chat_messages').delete().gt('id', 0);
+    if (error) {
+      alert(`Gagal menghapus semua pesan: ${error.message}\n\nJika terkendala RLS, jalankan SQL berikut di Supabase:\nCREATE POLICY "Authenticated can delete chat_messages" ON chat_messages FOR DELETE TO authenticated USING (true);`);
+      return;
+    }
     fetchMessages();
   };
 

@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { HomeSlide } from '@/types/database';
 import {
   Plus, Trash2, Edit3, ArrowUp, ArrowDown, Save, X,
   Upload, Eye, EyeOff, Loader2, Search, Image as ImageIcon,
   Layers, Calendar, Tag, ExternalLink, Monitor,
-  GripVertical, Copy, ToggleLeft, ToggleRight,
+  GripVertical, Copy, ToggleLeft, ToggleRight, Link2,
 } from 'lucide-react';
 
 // ─── CONSTANTS ──────────────────────────────────────────────
@@ -32,6 +32,32 @@ const ACTION_TYPES = [
   { value: 'url', label: 'Buka URL', desc: 'Buka link di browser' },
   { value: 'none', label: 'Tanpa Aksi', desc: 'Tidak ada aksi saat di-tap' },
 ];
+
+/** Map content_type → Supabase table + columns for content_id picker */
+const CONTENT_TABLE_MAP: Record<string, { table: string; idCol: string; titleCol: string } | null> = {
+  poster: null,
+  ad: { table: 'ads', idCol: 'id', titleCol: 'title' },
+  mimbar: { table: 'mimbar_materials', idCol: 'id', titleCol: 'title' },
+  kajian: { table: 'kajian_offline', idCol: 'id', titleCol: 'title' },
+  doa: { table: 'daily_doas', idCol: 'id', titleCol: 'title' },
+  dzikir: { table: 'dzikir_collections', idCol: 'id', titleCol: 'label' },
+  info: null,
+  custom: null,
+  podcast: { table: 'podcasts', idCol: 'id', titleCol: 'title' },
+  ebook: { table: 'ebooks', idCol: 'id', titleCol: 'title' },
+  event: { table: 'events', idCol: 'id', titleCol: 'title' },
+};
+
+// ─── HELPERS ────────────────────────────────────────────────
+
+/** Convert ISO / any date string to `YYYY-MM-DDTHH:mm` for datetime-local */
+function toLocalDatetime(v: string | null | undefined): string {
+  if (!v) return '';
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 // ─── MAIN COMPONENT ─────────────────────────────────────────
 
@@ -61,6 +87,10 @@ export default function HomeSlides() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Content ID picker
+  const [contentItems, setContentItems] = useState<{ id: string; title: string }[]>([]);
+  const [loadingContentItems, setLoadingContentItems] = useState(false);
+
   // Filters
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
@@ -69,6 +99,42 @@ export default function HomeSlides() {
   useEffect(() => {
     fetchSlides();
   }, []);
+
+  // Fetch content items when content_type changes (for content_id picker)
+  const fetchContentItems = useCallback(async (type: string) => {
+    const mapping = CONTENT_TABLE_MAP[type];
+    if (!mapping) {
+      setContentItems([]);
+      return;
+    }
+    setLoadingContentItems(true);
+    try {
+      const { data } = await supabase
+        .from(mapping.table)
+        .select(`${mapping.idCol}, ${mapping.titleCol}`)
+        .order(mapping.titleCol, { ascending: true })
+        .limit(200);
+      if (data) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setContentItems(
+          (data as any[]).map((d) => ({
+            id: String(d[mapping.idCol] ?? ''),
+            title: String(d[mapping.titleCol] ?? '(tanpa judul)'),
+          }))
+        );
+      }
+    } catch {
+      setContentItems([]);
+    }
+    setLoadingContentItems(false);
+  }, []);
+
+  // Trigger fetch when form content_type changes while form is open
+  useEffect(() => {
+    if (showForm && form.content_type) {
+      fetchContentItems(form.content_type);
+    }
+  }, [showForm, form.content_type, fetchContentItems]);
 
   // ─── DATA FETCHING ──────────────────────────────────────────
 
@@ -137,8 +203,8 @@ export default function HomeSlides() {
         action_data: form.action_data || '',
         is_active: form.is_active ?? true,
         sort_order: form.sort_order ?? 0,
-        start_date: form.start_date || null,
-        end_date: form.end_date || null,
+        start_date: form.start_date ? new Date(form.start_date).toISOString() : null,
+        end_date: form.end_date ? new Date(form.end_date).toISOString() : null,
       };
 
       if (editingSlide?.id) {
@@ -187,7 +253,11 @@ export default function HomeSlides() {
 
   function openEditForm(slide: HomeSlide) {
     setEditingSlide(slide);
-    setForm({ ...slide });
+    setForm({
+      ...slide,
+      start_date: slide.start_date ? toLocalDatetime(slide.start_date) : null,
+      end_date: slide.end_date ? toLocalDatetime(slide.end_date) : null,
+    });
     setFile(null);
     setShowForm(true);
   }
@@ -542,7 +612,7 @@ export default function HomeSlides() {
                     <button
                       key={type.value}
                       type="button"
-                      onClick={() => setForm(f => ({ ...f, content_type: type.value }))}
+                      onClick={() => setForm(f => ({ ...f, content_type: type.value, content_id: null }))}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
                         form.content_type === type.value
                           ? 'text-white border-transparent shadow'
@@ -555,6 +625,37 @@ export default function HomeSlides() {
                   ))}
                 </div>
               </div>
+
+              {/* Content ID Picker — only for types with data tables */}
+              {CONTENT_TABLE_MAP[form.content_type || ''] && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
+                    <Link2 size={14} />
+                    Pilih Item Spesifik
+                    <span className="text-xs text-slate-400 font-normal">(opsional — untuk deep link ke detail)</span>
+                  </label>
+                  {loadingContentItems ? (
+                    <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
+                      <Loader2 size={14} className="animate-spin" /> Memuat data...
+                    </div>
+                  ) : contentItems.length > 0 ? (
+                    <select
+                      value={form.content_id || ''}
+                      onChange={e => setForm(f => ({ ...f, content_id: e.target.value || null }))}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="">Tanpa deep link (buka halaman utama fitur)</option>
+                      {contentItems.map(item => (
+                        <option key={item.id} value={item.id}>
+                          {item.title}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="text-xs text-slate-400 py-2">Belum ada data untuk tipe ini</p>
+                  )}
+                </div>
+              )}
 
               {/* Image */}
               <div>
@@ -729,8 +830,8 @@ export default function HomeSlides() {
                     <label className="text-xs text-slate-500">Mulai Tayang</label>
                     <input
                       type="datetime-local"
-                      value={form.start_date ? form.start_date.slice(0, 16) : ''}
-                      onChange={e => setForm(f => ({ ...f, start_date: e.target.value ? new Date(e.target.value).toISOString() : null }))}
+                      value={form.start_date || ''}
+                      onChange={e => setForm(f => ({ ...f, start_date: e.target.value || null }))}
                       className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
@@ -738,8 +839,8 @@ export default function HomeSlides() {
                     <label className="text-xs text-slate-500">Berhenti Tayang</label>
                     <input
                       type="datetime-local"
-                      value={form.end_date ? form.end_date.slice(0, 16) : ''}
-                      onChange={e => setForm(f => ({ ...f, end_date: e.target.value ? new Date(e.target.value).toISOString() : null }))}
+                      value={form.end_date || ''}
+                      onChange={e => setForm(f => ({ ...f, end_date: e.target.value || null }))}
                       className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                   </div>

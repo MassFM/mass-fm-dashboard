@@ -320,7 +320,7 @@ export interface Ad {
   client_name: string;
   client_phone: string;
   client_email: string;
-  package_type: 'banner' | 'interstitial' | 'featured' | 'premium';
+  package_type: 'banner' | 'interstitial' | 'home_slider' | 'featured' | 'premium';
   title: string;
   description: string;
   image_url: string;
@@ -328,7 +328,7 @@ export interface Ad {
   action_type: 'webview' | 'url' | 'whatsapp' | 'screen';
   click_area: ClickArea | null;
   category: string;
-  placement: 'catalog' | 'interstitial_open' | 'interstitial_close' | 'interstitial_transition';
+  placement: 'catalog' | 'home_slider' | 'interstitial_open' | 'interstitial_close' | 'interstitial_transition';
   start_date: string;
   expiry_date: string;
   is_active: boolean;

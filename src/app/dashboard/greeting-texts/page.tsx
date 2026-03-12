@@ -231,13 +231,12 @@ export default function GreetingTextsPage() {
   // Fetch interval & animation type from app_settings
   useEffect(() => {
     (async () => {
-      // Fetch interval
-      const { data: d1 } = await supabase.from('app_settings').select('greeting_interval_seconds').limit(1).single();
-      if (d1?.greeting_interval_seconds) setIntervalSeconds(d1.greeting_interval_seconds);
-
-      // Fetch animation type (column may not exist yet)
-      const { data: d2, error: e2 } = await supabase.from('app_settings').select('greeting_animation_type').limit(1).single();
-      if (!e2 && d2?.greeting_animation_type) setAnimationType(d2.greeting_animation_type);
+      // Fetch all settings in one query to avoid schema cache errors for missing columns
+      const { data, error } = await supabase.from('app_settings').select('*').limit(1).single();
+      if (!error && data) {
+        if (data.greeting_interval_seconds) setIntervalSeconds(data.greeting_interval_seconds);
+        if (data.greeting_animation_type) setAnimationType(data.greeting_animation_type);
+      }
     })();
   }, []);
 
@@ -245,7 +244,7 @@ export default function GreetingTextsPage() {
     setIntervalSeconds(value);
     const { error } = await supabase.from('app_settings').update({ greeting_interval_seconds: value }).not('id', 'is', null);
     if (error) {
-      alert(`Gagal menyimpan interval: ${error.message}`);
+      alert(`Gagal menyimpan interval: ${error.message}\n\nPastikan kolom greeting_interval_seconds sudah ada.\nJalankan SQL:\nALTER TABLE app_settings ADD COLUMN IF NOT EXISTS greeting_interval_seconds int NOT NULL DEFAULT 8;`);
       return;
     }
     setIntervalSaved(true);
