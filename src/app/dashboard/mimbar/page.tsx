@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { BookOpen, Plus, Edit2, Trash2, Search, ToggleLeft, ToggleRight, X, Upload, Star, Eye, FileText, Globe } from 'lucide-react';
+import RichTextEditor from '@/components/RichTextEditor';
 
 interface MimbarMaterial {
   id?: string;
@@ -390,13 +391,14 @@ export default function MimbarPage() {
                   placeholder="Ringkasan singkat materi..." rows={2} />
               </div>
 
-              {/* Content HTML */}
+              {/* Content - Rich Text Editor */}
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Konten (HTML)</label>
-                <textarea value={form.content_html} onChange={(e) => setForm({ ...form, content_html: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 font-mono"
-                  placeholder="<p>Isi konten khutbah / kultum / tausyiah...</p>" rows={10} />
-                <p className="text-[10px] text-slate-400 mt-1">Gunakan tag HTML: &lt;p&gt;, &lt;h2&gt;, &lt;h3&gt;, &lt;blockquote&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;ul&gt;, &lt;ol&gt;</p>
+                <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Konten</label>
+                <RichTextEditor
+                  content={form.content_html}
+                  onChange={(html) => setForm({ ...form, content_html: html })}
+                  placeholder="Tulis isi khutbah / kultum / tausyiah di sini..."
+                />
               </div>
 
               {/* Tags */}
