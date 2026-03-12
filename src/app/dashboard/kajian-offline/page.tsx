@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Pencil, Trash2, MapPin, Phone, BookOpen, Radio, X, Map, Tag, Users, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, MapPin, Phone, BookOpen, Radio, X, Map, Tag, Users, Loader2, Copy } from 'lucide-react';
 
 interface KajianOffline {
   id?: string;
@@ -117,6 +117,20 @@ export default function KajianOfflinePage() {
   const openEdit = (item: KajianOffline) => {
     setForm({ ...item });
     setEditingId(item.id!);
+    setShowForm(true);
+  };
+
+  const duplicateItem = (item: KajianOffline) => {
+    const { id, ...rest } = item;
+    setForm({
+      ...rest,
+      title: `${item.title} (salinan)`,
+      pemateri: '',
+      pemateri_bio: '',
+      kitab_name: '',
+      materi: '',
+    });
+    setEditingId(null);
     setShowForm(true);
   };
 
@@ -627,6 +641,10 @@ export default function KajianOfflinePage() {
                     </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
+                    <button onClick={() => duplicateItem(item)}
+                      className="p-1.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors" title="Duplikat">
+                      <Copy size={14} />
+                    </button>
                     <button onClick={() => openEdit(item)}
                       className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
                       <Pencil size={14} />
