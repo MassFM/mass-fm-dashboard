@@ -8,6 +8,7 @@ interface KajianOffline {
   id?: string;
   title: string;
   pemateri: string;
+  pemateri_bio: string;
   materi: string;
   description: string;
   tempat: string;
@@ -41,7 +42,7 @@ interface RegionItem {
 const REGION_API = 'https://api-regional-indonesia.vercel.app';
 
 const emptyForm: KajianOffline = {
-  title: '', pemateri: '', materi: '', description: '', tempat: '', alamat: '',
+  title: '', pemateri: '', pemateri_bio: '', materi: '', description: '', tempat: '', alamat: '',
   latitude: null, longitude: null, contact_person: '', contact_phone: '',
   hari: '', jam: '', is_relay: false, kitab_name: '', file_url: '', image_url: '', is_active: true,
   provinsi: '', kota: '', kecamatan: '', desa: '', kategori: '', audience: 'Umum', pekan: 'semua',
@@ -134,6 +135,7 @@ export default function KajianOfflinePage() {
     const payload = {
       title: form.title.trim(),
       pemateri: form.pemateri.trim(),
+      pemateri_bio: form.pemateri_bio.trim(),
       materi: form.materi.trim(),
       description: form.description.trim(),
       tempat: form.tempat.trim(),
@@ -222,6 +224,11 @@ export default function KajianOfflinePage() {
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none" placeholder="Nama ustadz" />
               </div>
               <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Keterangan Pemateri</label>
+                <input type="text" value={form.pemateri_bio} onChange={e => updateField('pemateri_bio', e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none" placeholder="Misal: Pengajar Pesantren Al-Furqon Grobogan" />
+              </div>
+              <div className="md:col-span-2">
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Nama Kitab</label>
                 <input type="text" value={form.kitab_name} onChange={e => updateField('kitab_name', e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none" placeholder="Nama kitab yang dikaji" />
@@ -588,7 +595,12 @@ export default function KajianOfflinePage() {
                         <span className="px-2 py-0.5 bg-red-100 text-red-500 text-[10px] font-bold rounded-full">NONAKTIF</span>
                       )}
                     </div>
-                    {item.pemateri && <p className="text-xs text-purple-500 font-medium mt-0.5">{item.pemateri}</p>}
+                    {item.pemateri && (
+                      <div className="mt-0.5">
+                        <p className="text-xs text-purple-500 font-medium">{item.pemateri}</p>
+                        {item.pemateri_bio && <p className="text-[10px] text-slate-400 italic">{item.pemateri_bio}</p>}
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-3 mt-2 text-[11px] text-slate-400">
                       {(item.kota || item.provinsi) && (
                         <span className="flex items-center gap-1"><Map size={11} className="text-indigo-400" /> {[item.kota, item.provinsi].filter(Boolean).join(', ')}</span>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { MessageCircleHeart, Plus, Edit2, Trash2, Search, ToggleLeft, ToggleRight, X, Eye, Sparkles, Sun, Moon, Sunrise, Sunset, Clock, Settings, Timer, Check } from 'lucide-react';
+import { MessageCircleHeart, Plus, Edit2, Trash2, Search, ToggleLeft, ToggleRight, X, Eye, Sparkles, Sun, Moon, Sunrise, Sunset, Clock, Settings, Timer, Check, ArrowUp, Type, ZoomIn, ArrowRight, Droplets, RotateCcw, ArrowDownUp } from 'lucide-react';
 
 interface GreetingText {
   id?: number;
@@ -74,7 +74,7 @@ function AnimatedCounter({ target, duration = 800 }: { target: number; duration?
 }
 
 /* ─────────── Live Preview Banner ─────────── */
-function LivePreviewBanner({ greetings, intervalMs }: { greetings: GreetingText[]; intervalMs: number }) {
+function LivePreviewBanner({ greetings, intervalMs, animationType }: { greetings: GreetingText[]; intervalMs: number; animationType: string }) {
   const active = greetings.filter(g => g.is_active);
   const [index, setIndex] = useState(0);
   const [animState, setAnimState] = useState<'in' | 'out'>('in');
@@ -90,6 +90,31 @@ function LivePreviewBanner({ greetings, intervalMs }: { greetings: GreetingText[
     }, intervalMs);
     return () => clearInterval(interval);
   }, [active.length, intervalMs]);
+
+  // CSS animation styles based on animation type
+  const getAnimStyle = (state: 'in' | 'out'): React.CSSProperties => {
+    const isIn = state === 'in';
+    switch (animationType) {
+      case 'slide_up':
+        return { opacity: isIn ? 1 : 0, transform: isIn ? 'translateY(0)' : 'translateY(-12px)', transition: 'all 0.4s ease' };
+      case 'fade':
+        return { opacity: isIn ? 1 : 0, transition: 'opacity 0.5s ease' };
+      case 'typewriter':
+        return { opacity: isIn ? 1 : 0, clipPath: isIn ? 'inset(0 0 0 0)' : 'inset(0 100% 0 0)', transition: 'all 0.6s ease' };
+      case 'scale':
+        return { opacity: isIn ? 1 : 0, transform: isIn ? 'scale(1)' : 'scale(0.7)', transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' };
+      case 'slide_right':
+        return { opacity: isIn ? 1 : 0, transform: isIn ? 'translateX(0)' : 'translateX(-20px)', transition: 'all 0.4s ease' };
+      case 'blur':
+        return { opacity: isIn ? 1 : 0, filter: isIn ? 'blur(0px)' : 'blur(8px)', transition: 'all 0.5s ease' };
+      case 'flip':
+        return { opacity: isIn ? 1 : 0, transform: isIn ? 'perspective(600px) rotateX(0)' : 'perspective(600px) rotateX(90deg)', transition: 'all 0.5s ease' };
+      case 'bounce':
+        return { opacity: isIn ? 1 : 0, transform: isIn ? 'translateY(0)' : 'translateY(16px)', transition: isIn ? 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'all 0.3s ease' };
+      default:
+        return { opacity: isIn ? 1 : 0, transform: isIn ? 'translateY(0)' : 'translateY(-12px)', transition: 'all 0.4s ease' };
+    }
+  };
 
   if (active.length === 0) return null;
   const current = active[index % active.length];
@@ -127,11 +152,7 @@ function LivePreviewBanner({ greetings, intervalMs }: { greetings: GreetingText[
           {/* Greeting text with animation */}
           <div className="flex-1 min-w-0">
             <div
-              className="transition-all duration-400"
-              style={{
-                opacity: animState === 'in' ? 1 : 0,
-                transform: animState === 'in' ? 'translateY(0)' : 'translateY(-12px)',
-              }}
+              style={getAnimStyle(animState)}
             >
               <div className="flex items-center gap-2 mb-1">
                 <div className={`w-2 h-2 rounded-full ${langDotColor} animate-pulse`} />
@@ -181,6 +202,8 @@ export default function GreetingTextsPage() {
   const [mounted, setMounted] = useState(false);
   const [intervalSeconds, setIntervalSeconds] = useState(8);
   const [intervalSaved, setIntervalSaved] = useState(false);
+  const [animationType, setAnimationType] = useState('slide_up');
+  const [animSaved, setAnimSaved] = useState(false);
   const [form, setForm] = useState<GreetingText>({
     text: '',
     translation: '',
@@ -205,11 +228,12 @@ export default function GreetingTextsPage() {
 
   useEffect(() => { fetchGreetings(); }, [fetchGreetings]);
 
-  // Fetch interval from app_settings
+  // Fetch interval & animation type from app_settings
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from('app_settings').select('greeting_interval_seconds').limit(1).single();
+      const { data } = await supabase.from('app_settings').select('greeting_interval_seconds, greeting_animation_type').limit(1).single();
       if (data?.greeting_interval_seconds) setIntervalSeconds(data.greeting_interval_seconds);
+      if (data?.greeting_animation_type) setAnimationType(data.greeting_animation_type);
     })();
   }, []);
 
@@ -218,6 +242,13 @@ export default function GreetingTextsPage() {
     await supabase.from('app_settings').update({ greeting_interval_seconds: value }).not('id', 'is', null);
     setIntervalSaved(true);
     setTimeout(() => setIntervalSaved(false), 2000);
+  };
+
+  const saveAnimationType = async (value: string) => {
+    setAnimationType(value);
+    await supabase.from('app_settings').update({ greeting_animation_type: value }).not('id', 'is', null);
+    setAnimSaved(true);
+    setTimeout(() => setAnimSaved(false), 2000);
   };
 
   const filtered = greetings.filter(g => {
@@ -346,7 +377,7 @@ export default function GreetingTextsPage() {
           transitionDelay: '100ms',
         }}
       >
-        <LivePreviewBanner greetings={greetings} intervalMs={intervalSeconds * 1000} />
+        <LivePreviewBanner greetings={greetings} intervalMs={intervalSeconds * 1000} animationType={animationType} />
       </div>
 
       {/* ───── Interval Settings ───── */}
@@ -412,6 +443,81 @@ export default function GreetingTextsPage() {
                 <span className="text-xs text-green-500 font-medium">Tersimpan</span>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ───── Animation Type Picker ───── */}
+      <div
+        className="transition-all duration-700"
+        style={{
+          opacity: mounted ? 1 : 0,
+          transform: mounted ? 'translateY(0)' : 'translateY(16px)',
+          transitionDelay: '175ms',
+        }}
+      >
+        <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg flex items-center justify-center text-white">
+                <Sparkles size={16} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-700">Jenis Animasi</p>
+                <p className="text-[11px] text-slate-400">Pilih efek animasi saat teks sapaan berganti di aplikasi</p>
+              </div>
+            </div>
+            <div className={`flex items-center gap-1 transition-all duration-300 ${animSaved ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'}`}>
+              <Check size={14} className="text-green-500" />
+              <span className="text-xs text-green-500 font-medium">Tersimpan</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {([
+              { key: 'slide_up', label: 'Slide Up', desc: 'Geser dari bawah ke atas', icon: ArrowUp, activeBg: 'bg-purple-50', activeBorder: 'border-purple-400', activeShadow: 'shadow-purple-100', iconBg: 'bg-purple-500', checkBg: 'bg-purple-500' },
+              { key: 'fade', label: 'Fade', desc: 'Muncul perlahan', icon: Eye, activeBg: 'bg-blue-50', activeBorder: 'border-blue-400', activeShadow: 'shadow-blue-100', iconBg: 'bg-blue-500', checkBg: 'bg-blue-500' },
+              { key: 'typewriter', label: 'Typewriter', desc: 'Ketik huruf per huruf', icon: Type, activeBg: 'bg-emerald-50', activeBorder: 'border-emerald-400', activeShadow: 'shadow-emerald-100', iconBg: 'bg-emerald-500', checkBg: 'bg-emerald-500' },
+              { key: 'scale', label: 'Scale', desc: 'Membesar dari kecil', icon: ZoomIn, activeBg: 'bg-amber-50', activeBorder: 'border-amber-400', activeShadow: 'shadow-amber-100', iconBg: 'bg-amber-500', checkBg: 'bg-amber-500' },
+              { key: 'slide_right', label: 'Slide Right', desc: 'Geser dari kiri ke kanan', icon: ArrowRight, activeBg: 'bg-cyan-50', activeBorder: 'border-cyan-400', activeShadow: 'shadow-cyan-100', iconBg: 'bg-cyan-500', checkBg: 'bg-cyan-500' },
+              { key: 'blur', label: 'Blur', desc: 'Buram menjadi jelas', icon: Droplets, activeBg: 'bg-pink-50', activeBorder: 'border-pink-400', activeShadow: 'shadow-pink-100', iconBg: 'bg-pink-500', checkBg: 'bg-pink-500' },
+              { key: 'flip', label: 'Flip', desc: 'Efek balik 3D', icon: RotateCcw, activeBg: 'bg-indigo-50', activeBorder: 'border-indigo-400', activeShadow: 'shadow-indigo-100', iconBg: 'bg-indigo-500', checkBg: 'bg-indigo-500' },
+              { key: 'bounce', label: 'Bounce', desc: 'Memantul dari bawah', icon: ArrowDownUp, activeBg: 'bg-orange-50', activeBorder: 'border-orange-400', activeShadow: 'shadow-orange-100', iconBg: 'bg-orange-500', checkBg: 'bg-orange-500' },
+            ] as const).map(anim => {
+              const isActive = animationType === anim.key;
+              const IconComp = anim.icon;
+              return (
+                <button
+                  key={anim.key}
+                  onClick={() => saveAnimationType(anim.key)}
+                  className={`relative flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 text-left ${
+                    isActive
+                      ? `${anim.activeBorder} ${anim.activeBg} shadow-sm ${anim.activeShadow}`
+                      : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                    isActive
+                      ? `${anim.iconBg} text-white`
+                      : 'bg-slate-100 text-slate-400'
+                  }`}>
+                    <IconComp size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-xs font-semibold ${isActive ? 'text-slate-800' : 'text-slate-600'}`}>
+                      {anim.label}
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate">{anim.desc}</p>
+                  </div>
+                  {isActive && (
+                    <div className="absolute top-1.5 right-1.5">
+                      <div className={`w-4 h-4 rounded-full ${anim.checkBg} flex items-center justify-center`}>
+                        <Check size={10} className="text-white" />
+                      </div>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
