@@ -231,22 +231,34 @@ export default function GreetingTextsPage() {
   // Fetch interval & animation type from app_settings
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from('app_settings').select('greeting_interval_seconds, greeting_animation_type').limit(1).single();
-      if (data?.greeting_interval_seconds) setIntervalSeconds(data.greeting_interval_seconds);
-      if (data?.greeting_animation_type) setAnimationType(data.greeting_animation_type);
+      // Fetch interval
+      const { data: d1 } = await supabase.from('app_settings').select('greeting_interval_seconds').limit(1).single();
+      if (d1?.greeting_interval_seconds) setIntervalSeconds(d1.greeting_interval_seconds);
+
+      // Fetch animation type (column may not exist yet)
+      const { data: d2, error: e2 } = await supabase.from('app_settings').select('greeting_animation_type').limit(1).single();
+      if (!e2 && d2?.greeting_animation_type) setAnimationType(d2.greeting_animation_type);
     })();
   }, []);
 
   const saveInterval = async (value: number) => {
     setIntervalSeconds(value);
-    await supabase.from('app_settings').update({ greeting_interval_seconds: value }).not('id', 'is', null);
+    const { error } = await supabase.from('app_settings').update({ greeting_interval_seconds: value }).not('id', 'is', null);
+    if (error) {
+      alert(`Gagal menyimpan interval: ${error.message}`);
+      return;
+    }
     setIntervalSaved(true);
     setTimeout(() => setIntervalSaved(false), 2000);
   };
 
   const saveAnimationType = async (value: string) => {
     setAnimationType(value);
-    await supabase.from('app_settings').update({ greeting_animation_type: value }).not('id', 'is', null);
+    const { error } = await supabase.from('app_settings').update({ greeting_animation_type: value }).not('id', 'is', null);
+    if (error) {
+      alert(`Gagal menyimpan animasi: ${error.message}\n\nPastikan kolom greeting_animation_type sudah ada.\nJalankan SQL:\nALTER TABLE app_settings ADD COLUMN IF NOT EXISTS greeting_animation_type text NOT NULL DEFAULT 'slide_up';`);
+      return;
+    }
     setAnimSaved(true);
     setTimeout(() => setAnimSaved(false), 2000);
   };
