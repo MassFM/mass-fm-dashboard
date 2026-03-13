@@ -815,7 +815,6 @@ export default function KajianOfflinePage() {
                         ⚠ {item.status_note}
                       </p>
                     )}
-                    </div>
                     {item.pemateri && (
                       <div className="mt-0.5">
                         <p className="text-xs text-purple-500 font-medium">{item.pemateri}</p>

@@ -77,10 +77,10 @@ const defaultConfig: SchedulePosterConfig = {
   show_pemateri: true,
   show_kitab: true,
   show_relay_badge: true,
-  time_font_size: 21,
-  title_font_size: 22,
-  program_font_size: 17,
-  pemateri_font_size: 18,
+  time_font_size: 24,
+  title_font_size: 25,
+  program_font_size: 19,
+  pemateri_font_size: 20,
 
   footer_slogan: 'Saluran Islami Menggapai Ridho Ilahi',
   footer_streaming: 'Streaming: s5.xajist.com:8522/stream',
@@ -114,12 +114,12 @@ const bgPresets = [
 // ─── SAMPLE DATA FOR PREVIEW ────────────────────────────────
 
 const sampleSchedules = [
-  { jam: '05.00 - 06.00', program: 'Kajian Subuh', judul: 'Riyadhus Shalihin', pemateri: 'Ust. Ahmad', kitab: 'Riyadhus Shalihin', isRelay: false },
-  { jam: '06.00 - 07.00', program: 'Murottal', judul: 'Murottal Al-Quran', pemateri: '', kitab: '', isRelay: true },
-  { jam: '07.00 - 08.00', program: 'Kajian Pagi', judul: 'Tafsir Ibnu Katsir', pemateri: 'Ust. Muhammad', kitab: 'Ibnu Katsir', isRelay: false },
-  { jam: '08.00 - 09.00', program: 'Tausiyah', judul: 'Fiqih Shalat', pemateri: 'Ust. Abdullah', kitab: '', isRelay: false },
-  { jam: '09.00 - 10.00', program: 'Ceramah', judul: 'Adab Bermuamalah', pemateri: 'Ust. Ibrahim', kitab: 'Bulughul Maram', isRelay: false },
-  { jam: '10.00 - 11.30', program: 'Kajian Siang', judul: 'Aqidah Ahlus Sunnah', pemateri: 'Ust. Sulaiman', kitab: '', isRelay: false },
+  { jam: '05.00 - 06.00', program: 'Kajian Subuh', judul: 'Riyadhus Shalihin', pemateri: 'Ust. Ahmad', kitab: 'Riyadhus Shalihin', isRelay: false, category: 'live_studio' },
+  { jam: '06.00 - 07.00', program: 'Murottal', judul: 'Murottal Al-Quran', pemateri: '', kitab: '', isRelay: true, category: 'live_relay' },
+  { jam: '07.00 - 08.00', program: 'Kajian Pagi', judul: 'Tafsir Ibnu Katsir', pemateri: 'Ust. Muhammad', kitab: 'Ibnu Katsir', isRelay: false, category: 'live_delay' },
+  { jam: '08.00 - 09.00', program: 'Tausiyah', judul: 'Fiqih Shalat', pemateri: 'Ust. Abdullah', kitab: '', isRelay: false, category: '' },
+  { jam: '09.00 - 10.00', program: 'Ceramah', judul: 'Adab Bermuamalah', pemateri: 'Ust. Ibrahim', kitab: 'Bulughul Maram', isRelay: false, category: 'rekaman' },
+  { jam: '10.00 - 11.30', program: 'Kajian Siang', judul: 'Aqidah Ahlus Sunnah', pemateri: 'Ust. Sulaiman', kitab: '', isRelay: false, category: 'live_studio' },
 ];
 
 // ─── MAIN PAGE COMPONENT ────────────────────────────────────
@@ -448,7 +448,7 @@ function PosterPreview({ config }: { config: SchedulePosterConfig }) {
             transform: `scale(${scale})`,
             transformOrigin: 'top left',
             background: `linear-gradient(to bottom, ${config.bg_gradient_start} 0%, ${config.bg_gradient_middle} 40%, ${config.bg_gradient_end} 100%)`,
-            fontFamily: 'system-ui, -apple-system, sans-serif',
+            fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
           }}
         >
           {/* Header */}
@@ -520,18 +520,21 @@ function PosterPreview({ config }: { config: SchedulePosterConfig }) {
           }} />
 
           {/* Schedule */}
-          <div style={{ padding: '24px 48px' }}>
-            {sampleSchedules.map((item, i) => (
+          <div style={{ padding: '24px 40px' }}>
+            {sampleSchedules.map((item, i) => {
+              const catLabel = item.category === 'live_studio' ? 'Live Studio' : item.category === 'live_relay' ? 'Live Relay' : item.category === 'live_delay' ? 'Live Delay' : item.category === 'rekaman' ? 'Rekaman' : '';
+              const catColor = item.category === 'live_studio' ? '#822a6e' : item.category === 'live_relay' ? '#E65100' : item.category === 'live_delay' ? '#1565C0' : item.category === 'rekaman' ? '#2E7D32' : '#757575';
+              return (
               <div key={i}>
                 <div style={{
                   display: 'flex',
-                  padding: '14px 20px',
-                  borderRadius: 14,
-                  backgroundColor: i % 2 === 0 ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)',
-                  gap: 16,
+                  padding: '16px 20px',
+                  borderRadius: 16,
+                  backgroundColor: i % 2 === 0 ? 'rgba(255,255,255,0.045)' : 'rgba(255,255,255,0.02)',
+                  alignItems: 'stretch',
                 }}>
-                  {/* Time */}
-                  <div style={{ width: 220, flexShrink: 0 }}>
+                  {/* Time + Category */}
+                  <div style={{ width: 230, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <div style={{
                       color: config.accent_color,
                       fontSize: config.time_font_size,
@@ -540,25 +543,49 @@ function PosterPreview({ config }: { config: SchedulePosterConfig }) {
                     }}>
                       {item.jam}
                     </div>
-                    {config.show_relay_badge && item.isRelay && (
+                    {catLabel && (
                       <div style={{
                         display: 'inline-block',
-                        padding: '3px 10px',
+                        padding: '4px 12px',
                         borderRadius: 8,
-                        backgroundColor: 'rgba(255,165,0,0.15)',
-                        color: '#FFA500',
-                        fontSize: 14,
+                        backgroundColor: `${catColor}30`,
+                        border: `1px solid ${catColor}50`,
+                        color: catColor,
+                        fontSize: 15,
                         fontWeight: 600,
-                        marginTop: 4,
+                        width: 'fit-content',
+                      }}>
+                        {catLabel}
+                      </div>
+                    )}
+                    {config.show_relay_badge && item.isRelay && !catLabel && (
+                      <div style={{
+                        display: 'inline-block',
+                        padding: '4px 12px',
+                        borderRadius: 8,
+                        backgroundColor: 'rgba(255,165,0,0.2)',
+                        border: '1px solid rgba(255,165,0,0.3)',
+                        color: '#FFA500',
+                        fontSize: 15,
+                        fontWeight: 600,
+                        width: 'fit-content',
                       }}>
                         📡 Relay
                       </div>
                     )}
                   </div>
+                  {/* Separator */}
+                  <div style={{
+                    width: 2,
+                    margin: '0 16px',
+                    background: `linear-gradient(to bottom, ${config.accent_color}60, ${config.accent_color}15)`,
+                    borderRadius: 1,
+                    minHeight: 60,
+                  }} />
                   {/* Info */}
                   <div style={{ flex: 1 }}>
                     {config.show_program && item.program && (
-                      <div style={{ color: `${config.text_color}90`, fontSize: config.program_font_size, fontWeight: 500 }}>
+                      <div style={{ color: `${config.text_color}90`, fontSize: config.program_font_size, fontWeight: 500, letterSpacing: 1, textTransform: 'uppercase' as const, marginBottom: 4 }}>
                         {item.program}
                       </div>
                     )}
@@ -566,22 +593,22 @@ function PosterPreview({ config }: { config: SchedulePosterConfig }) {
                       {item.judul}
                     </div>
                     {config.show_pemateri && item.pemateri && (
-                      <div style={{ color: `${config.text_color}B0`, fontSize: config.pemateri_font_size, fontWeight: 500, marginTop: 2 }}>
+                      <div style={{ color: `${config.text_color}BE`, fontSize: config.pemateri_font_size, fontWeight: 500, marginTop: 4 }}>
                         👤 {item.pemateri}
                       </div>
                     )}
                     {config.show_kitab && item.kitab && (
-                      <div style={{ color: `${config.text_color}90`, fontSize: 16, marginTop: 2 }}>
+                      <div style={{ color: `${config.text_color}99`, fontSize: 17, marginTop: 3, fontStyle: 'italic' }}>
                         📚 {item.kitab}
                       </div>
                     )}
                   </div>
                 </div>
                 {i < sampleSchedules.length - 1 && (
-                  <div style={{ margin: '6px 20px', height: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+                  <div style={{ margin: '4px 16px', height: 1, backgroundColor: 'rgba(255,255,255,0.06)' }} />
                 )}
               </div>
-            ))}
+            )})}
           </div>
 
           {/* Footer */}
@@ -592,17 +619,17 @@ function PosterPreview({ config }: { config: SchedulePosterConfig }) {
               marginBottom: 16,
             }} />
             {config.show_footer_slogan && (
-              <div style={{ color: `${config.text_color}CC`, fontSize: 20, fontWeight: 600 }}>
+              <div style={{ color: `${config.text_color}CC`, fontSize: 22, fontWeight: 600 }}>
                 {config.footer_slogan_icon} {config.footer_slogan}
               </div>
             )}
             {config.show_footer_streaming && (
-              <div style={{ color: `${config.text_color}80`, fontSize: 16, marginTop: 6 }}>
+              <div style={{ color: `${config.text_color}85`, fontSize: 18, marginTop: 8 }}>
                 {config.footer_streaming_icon} {config.footer_streaming}
               </div>
             )}
             {config.show_footer_frequency && (
-              <div style={{ color: `${config.accent_color}B0`, fontSize: 18, fontWeight: 600, marginTop: 4 }}>
+              <div style={{ color: `${config.accent_color}BE`, fontSize: 20, fontWeight: 600, marginTop: 6 }}>
                 {config.footer_frequency_icon} {config.footer_frequency}
               </div>
             )}
