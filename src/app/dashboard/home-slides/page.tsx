@@ -791,14 +791,32 @@ export default function HomeSlides() {
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="">Otomatis (berdasarkan tipe konten)</option>
-                    <option value="mitra_dakwah">Mitra Dakwah (Iklan)</option>
-                    <option value="kajian_offline">Kajian Rutin</option>
-                    <option value="doa">Doa Harian</option>
+                    {/* Interaksi */}
+                    <option value="live_chat">Live Chat</option>
+                    <option value="tanya_ustadz">Tanya Ustadz</option>
+                    <option value="trouble_report">Lapor Gangguan</option>
+                    <option value="feedback">Kritik &amp; Saran</option>
+                    {/* Ibadah */}
                     <option value="dzikir">Dzikir Harian</option>
-                    <option value="mimbar">Mimbar</option>
+                    <option value="doa">Doa Harian</option>
+                    <option value="prayer_times">Waktu Shalat</option>
+                    <option value="qibla">Arah Kiblat</option>
+                    <option value="kalender">Kalender Hijriah</option>
+                    {/* Kajian & Konten */}
                     <option value="podcast">Podcast</option>
                     <option value="ebook">Ebook</option>
-                    <option value="event">Event & Acara</option>
+                    <option value="kajian_offline">Kajian Rutin</option>
+                    <option value="mimbar">Mimbar</option>
+                    <option value="greeting_card">Kartu Ucapan</option>
+                    <option value="event">Event &amp; Acara</option>
+                    {/* Lainnya */}
+                    <option value="donasi">Donasi</option>
+                    <option value="mitra_dakwah">Mitra Dakwah (Iklan)</option>
+                    <option value="statistik">Statistik</option>
+                    <option value="weather">Prakiraan Cuaca</option>
+                    <option value="widget_settings">Pengaturan Widget</option>
+                    <option value="onboarding">Tutorial</option>
+                    <option value="about_app">Tentang Aplikasi</option>
                   </select>
                 </div>
               )}

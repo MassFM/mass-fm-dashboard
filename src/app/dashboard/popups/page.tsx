@@ -22,15 +22,20 @@ const APP_SCREENS: { value: string; label: string; group: string }[] = [
   { value: 'doa_harian', label: 'Doa Harian', group: 'Ibadah' },
   { value: 'prayer_times', label: 'Waktu Shalat', group: 'Ibadah' },
   { value: 'qibla', label: 'Arah Kiblat', group: 'Ibadah' },
+  { value: 'kalender', label: 'Kalender Hijriah', group: 'Ibadah' },
   // Kajian & Konten
   { value: 'podcast', label: 'Podcast', group: 'Kajian & Konten' },
   { value: 'ebook', label: 'Ebook Islami', group: 'Kajian & Konten' },
   { value: 'kajian_offline', label: 'Kajian Rutin', group: 'Kajian & Konten' },
+  { value: 'mimbar', label: 'Mimbar', group: 'Kajian & Konten' },
   { value: 'greeting_card', label: 'Kartu Ucapan', group: 'Kajian & Konten' },
   { value: 'event', label: 'Event & Acara', group: 'Kajian & Konten' },
   // Lainnya
   { value: 'donasi', label: 'Donasi', group: 'Lainnya' },
+  { value: 'mitra_dakwah', label: 'Mitra Dakwah', group: 'Lainnya' },
   { value: 'statistik', label: 'Statistik', group: 'Lainnya' },
+  { value: 'weather', label: 'Prakiraan Cuaca', group: 'Lainnya' },
+  { value: 'widget_settings', label: 'Pengaturan Widget', group: 'Lainnya' },
   { value: 'onboarding', label: 'Tutorial', group: 'Lainnya' },
   { value: 'about_app', label: 'Tentang Aplikasi', group: 'Lainnya' },
 ];
