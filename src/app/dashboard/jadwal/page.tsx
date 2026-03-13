@@ -255,6 +255,17 @@ export default function KelolaJadwal() {
     }
   };
 
+  const downloadTemplate = () => {
+    const headers = ['Jam', 'Program', 'Judul', 'Pemateri', 'Kategori', 'Deskripsi', 'Kitab', 'Relay', 'YouTube_URL', 'Recording_URL'];
+    const example = ['06:00 - 07:00', 'Kajian Subuh', 'Tafsir Surat Al-Baqarah', 'Ust. Ahmad', 'live_relay', 'Kajian rutin pagi', 'Tafsir Ibnu Katsir', 'FALSE', '', ''];
+    const ws = XLSX.utils.aoa_to_sheet([headers, example]);
+    // Set column widths
+    ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 4, 18) }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Template Jadwal');
+    XLSX.writeFile(wb, 'template-jadwal-siar.xlsx');
+  };
+
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!importDate) {
       alert("Mohon pilih tanggal siaran terlebih dahulu pada kotak impor!");
@@ -272,10 +283,16 @@ export default function KelolaJadwal() {
       const data = XLSX.utils.sheet_to_json(ws) as any[];
       
       const formattedData = data.map(item => ({
-        jam: item.Jam, 
-        program: item.Program, 
-        judul: item.Judul, 
-        pemateri: item.Pemateri,
+        jam: item.Jam || '', 
+        program: item.Program || '', 
+        judul: item.Judul || '', 
+        pemateri: item.Pemateri || '',
+        category: item.Kategori || '',
+        description: (item.Deskripsi || '').toString().trim(),
+        kitab_name: (item.Kitab || '').toString().trim(),
+        is_relay: String(item.Relay || '').toLowerCase() === 'true',
+        youtube_url: (item.YouTube_URL || '').toString().trim() || null,
+        recording_url: (item.Recording_URL || '').toString().trim() || null,
         is_live: false, 
         date: importDate 
       }));
@@ -605,6 +622,10 @@ export default function KelolaJadwal() {
               <span className="material-icons-round text-3xl text-slate-300">cloud_upload</span>
               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{importDate ? `2. Impor Excel (${importDate})` : 'Pilih Tanggal Dulu'}</span>
             </label>
+            <button onClick={downloadTemplate} type="button"
+              className="mt-4 flex items-center gap-2 mx-auto px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-xs font-bold hover:bg-emerald-500 hover:text-white transition-all shadow-sm">
+              <span className="material-icons-round text-sm">download</span> DOWNLOAD TEMPLATE
+            </button>
           </div>
         </div>
 

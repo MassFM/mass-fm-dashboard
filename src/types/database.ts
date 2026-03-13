@@ -90,6 +90,10 @@ export interface KajianOffline {
   file_url: string;
   image_url: string;
   is_active: boolean;
+  /** Status kajian: 'normal' | 'libur' | 'ganti_hari' */
+  status?: string;
+  /** Keterangan status (misal alasan libur atau hari pengganti) */
+  status_note?: string;
 }
 
 export interface NotificationSettings {

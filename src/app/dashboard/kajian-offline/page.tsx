@@ -33,6 +33,10 @@ interface KajianOffline {
   kategori: string;
   audience: string;
   pekan: string;
+  /** Status kajian: 'normal' | 'libur' | 'ganti_hari' */
+  status: string;
+  /** Keterangan status */
+  status_note: string;
   created_at?: string;
 }
 
@@ -48,6 +52,7 @@ const emptyForm: KajianOffline = {
   latitude: null, longitude: null, contact_person: '', contact_phone: '',
   hari: '', jam: '', is_relay: false, kitab_name: '', file_url: '', image_url: '', is_active: true,
   provinsi: '', kota: '', kecamatan: '', desa: '', kategori: '', audience: 'Umum', pekan: 'semua',
+  status: 'normal', status_note: '',
 };
 
 const HARI_OPTIONS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'];
@@ -291,6 +296,8 @@ export default function KajianOfflinePage() {
       kategori: form.kategori,
       audience: form.audience,
       pekan: form.pekan,
+      status: form.status,
+      status_note: form.status_note.trim(),
     };
 
     let error;
@@ -723,6 +730,27 @@ export default function KajianOfflinePage() {
                   <span className="text-sm text-slate-600 font-medium">Aktif</span>
                 </label>
               </div>
+
+              {/* Status Kajian */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Status Kajian</label>
+                <select value={form.status} onChange={e => updateField('status', e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none">
+                  <option value="normal">Normal</option>
+                  <option value="libur">🔴 Libur / Diliburkan</option>
+                  <option value="ganti_hari">🔵 Ganti Hari</option>
+                </select>
+              </div>
+              {form.status !== 'normal' && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">
+                    {form.status === 'libur' ? 'Keterangan Libur' : 'Keterangan Ganti Hari'}
+                  </label>
+                  <input type="text" value={form.status_note} onChange={e => updateField('status_note', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none"
+                    placeholder={form.status === 'libur' ? 'Misal: Libur hingga selesai Ramadhan' : 'Misal: Pindah ke hari Kamis'} />
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 mt-6 pt-4 border-t border-slate-100">
@@ -775,6 +803,18 @@ export default function KajianOfflinePage() {
                       {!item.is_active && (
                         <span className="px-2 py-0.5 bg-red-100 text-red-500 text-[10px] font-bold rounded-full">NONAKTIF</span>
                       )}
+                      {item.status === 'libur' && (
+                        <span className="px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full">🔴 LIBUR</span>
+                      )}
+                      {item.status === 'ganti_hari' && (
+                        <span className="px-2 py-0.5 bg-blue-500 text-white text-[10px] font-bold rounded-full">🔵 GANTI HARI</span>
+                      )}
+                    </div>
+                    {item.status !== 'normal' && item.status_note && (
+                      <p className={`text-[10px] font-medium mt-0.5 ${item.status === 'libur' ? 'text-red-500' : 'text-blue-500'}`}>
+                        ⚠ {item.status_note}
+                      </p>
+                    )}
                     </div>
                     {item.pemateri && (
                       <div className="mt-0.5">
