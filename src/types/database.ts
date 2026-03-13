@@ -303,7 +303,7 @@ export interface ClickArea {
 export interface PopupItem {
   id?: number;
   created_at?: string;
-  type: 'open' | 'close';
+  type: 'open' | 'close' | 'instant';
   title: string;
   body: string;
   image_url: string;
@@ -313,6 +313,7 @@ export interface PopupItem {
   click_area: ClickArea | null;
   is_active: boolean;
   show_once: boolean;
+  pushed_at?: string | null;
 }
 
 // ─── MITRA DAKWAH (ADS / PARTNER) ──────────────────────────

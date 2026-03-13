@@ -7,7 +7,7 @@ import {
   Plus, Trash2, ToggleLeft, ToggleRight, Edit,
   MessageSquareDashed, Smartphone, LogOut as LogOutIcon,
   Globe, MessageCircle, Layout, MousePointer2, X, RotateCcw,
-  Upload, ImageIcon, Link2,
+  Upload, ImageIcon, Link2, Send, Zap,
 } from 'lucide-react';
 
 // ─── Daftar halaman aplikasi yang bisa dijadikan target navigasi ───
@@ -36,7 +36,7 @@ const APP_SCREENS: { value: string; label: string; group: string }[] = [
 ];
 
 type FormState = {
-  type: 'open' | 'close';
+  type: 'open' | 'close' | 'instant';
   title: string;
   body: string;
   image_url: string;
@@ -232,6 +232,7 @@ export default function PopupsPage() {
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [pushing, setPushing] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [imageMode, setImageMode] = useState<'url' | 'upload'>('url');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -339,6 +340,49 @@ export default function PopupsPage() {
     fetchPopups();
   };
 
+  // ── Kirim Sekarang: push popup ke semua user via Realtime ──
+  const handlePushNow = async (item: PopupItem) => {
+    if (!item.id) return;
+    if (!confirm(
+      `Popup "${item.title}" akan langsung ditampilkan ke SEMUA pengguna yang sedang membuka aplikasi.\n\nLanjutkan?`
+    )) return;
+
+    setPushing(item.id);
+    try {
+      // Update pushed_at + pastikan is_active = true
+      // Ini akan mentrigger Supabase Realtime di semua app
+      await supabase
+        .from('app_popups')
+        .update({
+          pushed_at: new Date().toISOString(),
+          is_active: true,
+        })
+        .eq('id', item.id);
+
+      // Kirim FCM sebagai fallback (untuk app yang di background)
+      try {
+        await supabase.functions.invoke('send-notification', {
+          body: {
+            topic: 'all_users',
+            title: item.title || 'Info dari Radio Mass FM',
+            body: item.body || '',
+            data: {
+              type: 'popup',
+              popup_id: item.id.toString(),
+            },
+          },
+        });
+      } catch (fcmErr) {
+        console.warn('FCM fallback gagal (popup tetap dikirim via Realtime):', fcmErr);
+      }
+
+      fetchPopups();
+    } catch (e: any) {
+      alert('Gagal mengirim popup: ' + (e?.message || 'Unknown error'));
+    }
+    setPushing(null);
+  };
+
   // Helper: label aksi tujuan untuk list item
   const getActionTarget = (item: PopupItem) => {
     if (!item.action_url) return null;
@@ -366,7 +410,7 @@ export default function PopupsPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-800">Popup Info</h1>
-            <p className="text-sm text-slate-400">Kelola popup saat buka &amp; tutup aplikasi</p>
+            <p className="text-sm text-slate-400">Kelola popup saat buka, tutup, atau kirim langsung ke pengguna</p>
           </div>
         </div>
         <button
@@ -393,11 +437,12 @@ export default function PopupsPage() {
               <label className="text-sm font-medium text-slate-600 block mb-1">Tipe Popup</label>
               <select
                 value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value as 'open' | 'close' })}
+                onChange={(e) => setForm({ ...form, type: e.target.value as 'open' | 'close' | 'instant' })}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none"
               >
                 <option value="open">🟢 Buka Aplikasi</option>
                 <option value="close">🔴 Tutup Aplikasi</option>
+                <option value="instant">⚡ Instant (Kirim Kapan Saja)</option>
               </select>
             </div>
             <div>
@@ -644,9 +689,9 @@ export default function PopupsPage() {
             <div key={item.id} className="bg-white rounded-xl border border-slate-100 px-6 py-4 flex items-center gap-4">
               {/* Type badge */}
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                item.type === 'open' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-400'
+                item.type === 'open' ? 'bg-green-50 text-green-500' : item.type === 'instant' ? 'bg-amber-50 text-amber-500' : 'bg-red-50 text-red-400'
               }`}>
-                {item.type === 'open' ? <Smartphone size={18} /> : <LogOutIcon size={18} />}
+                {item.type === 'open' ? <Smartphone size={18} /> : item.type === 'instant' ? <Zap size={18} /> : <LogOutIcon size={18} />}
               </div>
               {/* Info */}
               <div className="flex-1 min-w-0">
@@ -655,9 +700,11 @@ export default function PopupsPage() {
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                     item.type === 'open'
                       ? 'bg-green-50 text-green-500'
+                      : item.type === 'instant'
+                      ? 'bg-amber-50 text-amber-500'
                       : 'bg-red-50 text-red-400'
                   }`}>
-                    {item.type === 'open' ? 'BUKA APP' : 'TUTUP APP'}
+                    {item.type === 'open' ? 'BUKA APP' : item.type === 'instant' ? 'INSTANT' : 'TUTUP APP'}
                   </span>
                   {item.action_url && <ActionTypeBadge type={item.action_type || 'url'} />}
                   {item.show_once && (
@@ -678,6 +725,19 @@ export default function PopupsPage() {
               </div>
               {/* Actions */}
               <div className="flex items-center gap-2 shrink-0">
+                {/* Kirim Sekarang button — available for all types */}
+                <button
+                  onClick={() => handlePushNow(item)}
+                  disabled={pushing === item.id}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors text-xs font-bold disabled:opacity-50"
+                  title="Kirim popup ke semua pengguna sekarang"
+                >
+                  {pushing === item.id ? (
+                    <><span className="animate-spin">⏳</span> Mengirim...</>
+                  ) : (
+                    <><Send size={12} /> Kirim Sekarang</>
+                  )}
+                </button>
                 <button
                   onClick={() => toggleActive(item.id!, item.is_active)}
                   className="p-2 rounded-lg hover:bg-slate-50 transition-colors"
