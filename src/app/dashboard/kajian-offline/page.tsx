@@ -148,7 +148,14 @@ export default function KajianOfflinePage() {
     const defaultLat = form.latitude ?? -7.43;
     const defaultLng = form.longitude ?? 110.84;
     const map = L.map(mapContainerRef.current, { attributionControl: false }).setView([defaultLat, defaultLng], form.latitude ? 15 : 6);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+    // Google Maps tile layers
+    const googleRoadmap = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20 });
+    const googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20 });
+    const googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20 });
+    googleRoadmap.addTo(map); // default layer
+    L.control.layers({ 'Peta': googleRoadmap, 'Satelit': googleSatellite, 'Hybrid': googleHybrid }, {}, { position: 'topright' }).addTo(map);
+
     mapInstanceRef.current = map;
 
     // Custom marker icon (fix default icon issue with bundlers)
@@ -437,7 +444,7 @@ export default function KajianOfflinePage() {
                         ))}
                       </div>
                     )}
-                    <div ref={mapContainerRef} style={{ height: 260, width: '100%' }} />
+                    <div ref={mapContainerRef} style={{ height: 400, width: '100%' }} />
                     <p className="text-[10px] text-slate-400 text-center py-1 bg-slate-50">Klik pada peta untuk menentukan titik lokasi</p>
                   </div>
                 )}
