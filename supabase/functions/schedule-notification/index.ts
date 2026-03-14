@@ -47,9 +47,7 @@ Deno.serve(async (_req: Request) => {
     }
 
     // 3. Find programs starting in X minutes
-    const now = new Date();
-    // Adjust for WIB (UTC+7)
-    const wibOffset = 7 * 60;
+    // Reuse 'now' and 'wibOffset' from above
     const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
     const wibMinutes = utcMinutes + wibOffset;
     const currentHour = Math.floor(wibMinutes / 60) % 24;
