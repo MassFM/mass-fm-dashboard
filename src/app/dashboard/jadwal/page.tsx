@@ -25,7 +25,6 @@ export default function KelolaJadwal() {
   const [pemateri, setPemateri] = useState('');
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
-  const [isRelay, setIsRelay] = useState(false);
   const [kitabName, setKitabName] = useState('');
   const [fileUrl, setFileUrl] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -197,7 +196,6 @@ export default function KelolaJadwal() {
     setPemateri(item.pemateri);
     setFormDate(item.date || new Date().toISOString().split('T')[0]);
     setDescription((item as any).description || '');
-    setIsRelay((item as any).is_relay || false);
     setKitabName((item as any).kitab_name || '');
     setFileUrl((item as any).file_url || '');
     setYoutubeUrl((item as any).youtube_url || '');
@@ -218,7 +216,7 @@ export default function KelolaJadwal() {
     setJudul(''); setProgram(''); setPemateri('');
     setJamMulai('08:00'); setJamSelesai('09:00');
     setFormDate(new Date().toISOString().split('T')[0]);
-    setDescription(''); setIsRelay(false); setKitabName(''); setFileUrl('');
+    setDescription(''); setKitabName(''); setFileUrl('');
     setYoutubeUrl(''); setRecordingUrl('');
     setResumeHtml('');
     setCategory('');
@@ -230,7 +228,6 @@ export default function KelolaJadwal() {
     const payload = {
       judul, program, pemateri, jam: fullJam, date: formDate,
       description: description.trim(),
-      is_relay: isRelay,
       kitab_name: kitabName.trim(),
       file_url: fileUrl.trim(),
       youtube_url: youtubeUrl.trim() || null,
@@ -256,8 +253,8 @@ export default function KelolaJadwal() {
   };
 
   const downloadTemplate = () => {
-    const headers = ['Jam', 'Program', 'Judul', 'Pemateri', 'Kategori', 'Deskripsi', 'Kitab', 'Relay', 'YouTube_URL', 'Recording_URL'];
-    const example = ['06:00 - 07:00', 'Kajian Subuh', 'Tafsir Surat Al-Baqarah', 'Ust. Ahmad', 'live_relay', 'Kajian rutin pagi', 'Tafsir Ibnu Katsir', 'FALSE', '', ''];
+    const headers = ['Jam', 'Program', 'Judul', 'Pemateri', 'Kategori', 'Deskripsi', 'Kitab', 'YouTube_URL', 'Recording_URL'];
+    const example = ['06:00 - 07:00', 'Kajian Subuh', 'Tafsir Surat Al-Baqarah', 'Ust. Ahmad', 'live_relay', 'Kajian rutin pagi', 'Tafsir Ibnu Katsir', '', ''];
     const ws = XLSX.utils.aoa_to_sheet([headers, example]);
     // Set column widths
     ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 4, 18) }));
@@ -290,7 +287,6 @@ export default function KelolaJadwal() {
         category: item.Kategori || '',
         description: (item.Deskripsi || '').toString().trim(),
         kitab_name: (item.Kitab || '').toString().trim(),
-        is_relay: String(item.Relay || '').toLowerCase() === 'true',
         youtube_url: (item.YouTube_URL || '').toString().trim() || null,
         recording_url: (item.Recording_URL || '').toString().trim() || null,
         is_live: false, 
@@ -600,12 +596,6 @@ export default function KelolaJadwal() {
                 </button>
               </div>
               )}
-              <div className="border-t border-slate-50 pt-4 space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={isRelay} onChange={(e) => setIsRelay(e.target.checked)} className="w-4 h-4 text-purple-600 rounded" />
-                  <span className="text-xs text-slate-600 font-medium">Relay dari kajian rutin</span>
-                </label>
-              </div>
               <button type="submit" className={`w-full text-white font-bold py-3 rounded-2xl transition-all shadow-md ${editingId ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-secondary'}`}>
                 {editingId ? 'Update Perubahan' : 'Posting Jadwal'}
               </button>
@@ -659,7 +649,6 @@ export default function KelolaJadwal() {
                     <td className="px-6 py-4">
                       <p className="text-[10px] font-black text-primary uppercase leading-tight mb-1">
                         {s.program}
-                        {(s as any).is_relay && <span className="ml-2 px-1.5 py-0.5 bg-orange-100 text-orange-600 text-[8px] rounded font-bold">RELAY</span>}
                         {(s as any).category === 'live_studio' && <span className="ml-1 px-1.5 py-0.5 bg-purple-100 text-purple-600 text-[8px] rounded font-bold">🎙 STUDIO</span>}
                         {(s as any).category === 'live_relay' && <span className="ml-1 px-1.5 py-0.5 bg-orange-100 text-orange-600 text-[8px] rounded font-bold">📡 RELAY</span>}
                         {(s as any).category === 'live_delay' && <span className="ml-1 px-1.5 py-0.5 bg-blue-100 text-blue-600 text-[8px] rounded font-bold">⏱ DELAY</span>}
