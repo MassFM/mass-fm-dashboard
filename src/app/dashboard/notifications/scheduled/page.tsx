@@ -28,12 +28,15 @@ export default function ScheduledNotificationsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [saving, setSaving] = useState(false);
 
   // Form state
   const [form, setForm] = useState<ScheduledNotification>({
     title: '', body: '', topic: 'all_users',
     scheduled_at: '', status: 'pending', repeat_type: 'none',
   });
+  // Untuk repeat harian: simpan jam saja (HH:mm)
+  const [repeatTime, setRepeatTime] = useState('07:00');
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -72,10 +75,24 @@ export default function ScheduledNotificationsPage() {
   };
 
   const handleSave = async () => {
-    if (!form.title.trim() || !form.body.trim() || !form.scheduled_at) {
-      return alert('Judul, isi pesan, dan waktu kirim wajib diisi');
+    if (!form.title.trim() || !form.body.trim()) {
+      return alert('Judul dan isi pesan wajib diisi');
     }
-    const scheduledUtc = new Date(form.scheduled_at).toISOString();
+
+    // Hitung scheduled_at berdasarkan repeat_type
+    let scheduledUtc: string;
+    if (form.repeat_type === 'daily') {
+      // Untuk harian: pakai hari ini + jam yang dipilih, kalau sudah lewat pakai besok
+      const [h, m] = repeatTime.split(':').map(Number);
+      const target = new Date();
+      target.setHours(h, m, 0, 0);
+      if (target <= new Date()) target.setDate(target.getDate() + 1);
+      scheduledUtc = target.toISOString();
+    } else {
+      if (!form.scheduled_at) return alert('Waktu kirim wajib diisi');
+      scheduledUtc = new Date(form.scheduled_at).toISOString();
+    }
+
     const payload = {
       title: form.title.trim(),
       body: form.body.trim(),
@@ -85,14 +102,30 @@ export default function ScheduledNotificationsPage() {
       repeat_type: form.repeat_type,
     };
 
-    if (editId) {
-      await supabase.from('scheduled_notifications').update(payload as any).eq('id', editId);
-    } else {
-      await supabase.from('scheduled_notifications').insert(payload as any);
+    setSaving(true);
+    try {
+      let result;
+      if (editId) {
+        result = await supabase.from('scheduled_notifications').update(payload as any).eq('id', editId);
+      } else {
+        result = await supabase.from('scheduled_notifications').insert(payload as any);
+      }
+
+      if (result.error) {
+        console.error('Save error:', result.error);
+        alert(`Gagal menyimpan: ${result.error.message}`);
+        return;
+      }
+
+      setShowModal(false);
+      resetForm();
+      fetchItems();
+    } catch (err: any) {
+      console.error('Save exception:', err);
+      alert(`Error: ${err.message || 'Gagal menyimpan'}`);
+    } finally {
+      setSaving(false);
     }
-    setShowModal(false);
-    resetForm();
-    fetchItems();
   };
 
   const handleDelete = async (id: number) => {
@@ -319,12 +352,27 @@ export default function ScheduledNotificationsPage() {
               </div>
 
               {/* Waktu Kirim */}
-              <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">Waktu Kirim *</label>
-                <input type="datetime-local" value={form.scheduled_at}
-                  onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
-              </div>
+              {form.repeat_type === 'daily' ? (
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Jam Kirim Harian *</label>
+                  <input type="time" value={repeatTime}
+                    onChange={(e) => setRepeatTime(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  <p className="text-[11px] text-slate-400 mt-1">Notifikasi akan dikirim setiap hari pada jam ini. Jika jam hari ini sudah lewat, dimulai besok.</p>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">
+                    {form.repeat_type === 'weekly' ? 'Waktu Kirim Pertama *' : 'Waktu Kirim *'}
+                  </label>
+                  <input type="datetime-local" value={form.scheduled_at}
+                    onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  {form.repeat_type === 'weekly' && (
+                    <p className="text-[11px] text-slate-400 mt-1">Notifikasi akan dikirim setiap minggu pada hari dan jam yang sama setelah pengiriman pertama.</p>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 {/* Topik */}
@@ -367,9 +415,9 @@ export default function ScheduledNotificationsPage() {
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={() => setShowModal(false)}
                 className="px-5 py-2.5 rounded-xl text-sm text-slate-400 hover:bg-slate-50">Batal</button>
-              <button onClick={handleSave}
-                className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-purple-900 text-white hover:opacity-90 shadow">
-                {editId ? 'Simpan Perubahan' : 'Jadwalkan'}
+              <button onClick={handleSave} disabled={saving}
+                className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-purple-900 text-white hover:opacity-90 shadow disabled:opacity-50">
+                {saving ? 'Menyimpan...' : editId ? 'Simpan Perubahan' : 'Jadwalkan'}
               </button>
             </div>
           </div>
