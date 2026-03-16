@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Clock, Calendar, Minus, Plus, Save, RotateCcw } from 'lucide-react';
+import { Clock, Calendar, Minus, Plus, Save, RotateCcw, Bell, BellOff } from 'lucide-react';
 
 interface PrayerOffsets {
   subuh: number;
@@ -11,6 +11,12 @@ interface PrayerOffsets {
   ashar: number;
   maghrib: number;
   isya: number;
+}
+
+interface PrayerNotifConfig {
+  enabled: boolean;
+  minutes_before: number;
+  prayers: string[];
 }
 
 const defaultOffsets: PrayerOffsets = {
@@ -31,9 +37,25 @@ const prayerLabels: { key: keyof PrayerOffsets; label: string; emoji: string }[]
   { key: 'isya', label: 'Isya', emoji: '🌙' },
 ];
 
+const defaultNotifConfig: PrayerNotifConfig = {
+  enabled: false,
+  minutes_before: 10,
+  prayers: ['subuh', 'dzuhur', 'ashar', 'maghrib', 'isya'],
+};
+
+const allPrayers = [
+  { key: 'subuh', label: 'Subuh', emoji: '🌙' },
+  { key: 'terbit', label: 'Terbit', emoji: '🌅' },
+  { key: 'dzuhur', label: 'Dzuhur', emoji: '☀️' },
+  { key: 'ashar', label: 'Ashar', emoji: '🌤️' },
+  { key: 'maghrib', label: 'Maghrib', emoji: '🌇' },
+  { key: 'isya', label: 'Isya', emoji: '🌃' },
+];
+
 export default function TimeSettingsPage() {
   const [hijriOffset, setHijriOffset] = useState(0);
   const [offsets, setOffsets] = useState<PrayerOffsets>({ ...defaultOffsets });
+  const [notifConfig, setNotifConfig] = useState<PrayerNotifConfig>({ ...defaultNotifConfig });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -47,12 +69,12 @@ export default function TimeSettingsPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from('app_settings')
-      .select('id, hijri_offset, offset_subuh, offset_terbit, offset_dzuhur, offset_ashar, offset_maghrib, offset_isya')
+      .select('id, hijri_offset, offset_subuh, offset_terbit, offset_dzuhur, offset_ashar, offset_maghrib, offset_isya, prayer_notif_config')
       .limit(1)
       .single();
 
     if (!error && data) {
-      const d = data as Record<string, number | string | null>;
+      const d = data as Record<string, any>;
       setSettingsId(d.id as string);
       setHijriOffset((d.hijri_offset as number) ?? 0);
       setOffsets({
@@ -63,6 +85,16 @@ export default function TimeSettingsPage() {
         maghrib: (d.offset_maghrib as number) ?? 0,
         isya: (d.offset_isya as number) ?? 0,
       });
+      if (d.prayer_notif_config) {
+        const nc = typeof d.prayer_notif_config === 'string'
+          ? JSON.parse(d.prayer_notif_config)
+          : d.prayer_notif_config;
+        setNotifConfig({
+          enabled: nc.enabled ?? false,
+          minutes_before: nc.minutes_before ?? 10,
+          prayers: nc.prayers ?? ['subuh', 'dzuhur', 'ashar', 'maghrib', 'isya'],
+        });
+      }
     }
     setLoading(false);
   }
@@ -87,6 +119,7 @@ export default function TimeSettingsPage() {
         offset_ashar: offsets.ashar,
         offset_maghrib: offsets.maghrib,
         offset_isya: offsets.isya,
+        prayer_notif_config: notifConfig,
       })
       .eq('id', settingsId);
 
@@ -225,6 +258,117 @@ export default function TimeSettingsPage() {
         <div className="text-center text-xs text-slate-400 mt-4">
           Range: -15 sampai +15 menit per waktu shalat
         </div>
+      </div>
+
+      {/* Prayer Notification Config */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${notifConfig.enabled ? 'bg-green-50' : 'bg-slate-50'}`}>
+              {notifConfig.enabled
+                ? <Bell className="text-green-600" size={20} />
+                : <BellOff className="text-slate-400" size={20} />
+              }
+            </div>
+            <div>
+              <h2 className="font-semibold text-slate-700">Pengingat Waktu Shalat</h2>
+              <p className="text-xs text-slate-400">
+                Kirim notifikasi ke semua pengguna sebelum waktu shalat tiba
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setNotifConfig(prev => ({ ...prev, enabled: !prev.enabled }))}
+            className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+              notifConfig.enabled ? 'bg-green-500' : 'bg-slate-300'
+            }`}
+          >
+            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+              notifConfig.enabled ? 'translate-x-6' : 'translate-x-1'
+            }`} />
+          </button>
+        </div>
+
+        {notifConfig.enabled && (
+          <div className="space-y-5 mt-5 pt-5 border-t border-slate-100">
+            {/* Minutes before */}
+            <div>
+              <label className="text-sm font-medium text-slate-600 mb-2 block">
+                Notifikasi muncul berapa menit sebelum waktu shalat?
+              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setNotifConfig(prev => ({
+                    ...prev,
+                    minutes_before: Math.max(1, prev.minutes_before - 1),
+                  }))}
+                  className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+                >
+                  <Minus size={16} className="text-slate-600" />
+                </button>
+                <div className="text-center min-w-20">
+                  <div className="text-3xl font-bold text-slate-800">{notifConfig.minutes_before}</div>
+                  <div className="text-xs text-slate-400">menit</div>
+                </div>
+                <button
+                  onClick={() => setNotifConfig(prev => ({
+                    ...prev,
+                    minutes_before: Math.min(60, prev.minutes_before + 1),
+                  }))}
+                  className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+                >
+                  <Plus size={16} className="text-slate-600" />
+                </button>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Range: 1–60 menit</p>
+            </div>
+
+            {/* Prayer selection */}
+            <div>
+              <label className="text-sm font-medium text-slate-600 mb-3 block">
+                Waktu shalat yang diingatkan:
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {allPrayers.map(({ key, label, emoji }) => {
+                  const isChecked = notifConfig.prayers.includes(key);
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        setNotifConfig(prev => ({
+                          ...prev,
+                          prayers: isChecked
+                            ? prev.prayers.filter(p => p !== key)
+                            : [...prev.prayers, key],
+                        }));
+                      }}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                        isChecked
+                          ? 'border-primary bg-purple-50 ring-1 ring-primary/30'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <span className="text-xl">{emoji}</span>
+                      <span className={`text-sm font-medium ${isChecked ? 'text-primary' : 'text-slate-600'}`}>
+                        {label}
+                      </span>
+                      {isChecked && (
+                        <span className="ml-auto text-primary">✓</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-blue-50 border border-blue-200 p-3">
+              <p className="text-xs text-blue-700">
+                💡 Notifikasi muncul otomatis di HP pengguna sesuai waktu shalat lokal mereka.
+                Pengguna bisa menonaktifkan pengingat ini di dalam aplikasi.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Action Buttons */}
