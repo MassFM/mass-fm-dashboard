@@ -79,6 +79,7 @@ export interface KajianOffline {
   description: string;
   tempat: string;
   alamat: string;
+  map_url: string;
   latitude: number | null;
   longitude: number | null;
   contact_person: string;
@@ -391,4 +392,61 @@ export interface HomeSlide {
   end_date?: string | null;
   created_at?: string;
   updated_at?: string;
+}
+
+// ─── SCHOOL INFOS (Info Sekolah Sunnah) ────────────────────
+
+export interface SchoolInfo {
+  id?: number;
+  created_at?: string;
+  updated_at?: string;
+  source_type: 'manual' | 'website';
+  poster_url: string;
+  school_name: string;
+  level: string;
+  foundation_name: string;
+  advisor_name: string;
+  foundation_chairman: string;
+  principal_name: string;
+  city: string;
+  province: string;
+  address: string;
+  map_url: string;
+  email: string;
+  website_url: string;
+  phone_1: string;
+  phone_2: string;
+  mobile_phone: string;
+  contact_person: string;
+  whatsapp: string;
+  tuition_info: string;
+  entry_fee_info: string;
+  facebook_url: string;
+  instagram_url: string;
+  twitter_url: string;
+  youtube_url: string;
+  association_name: string;
+  verification_note: string;
+  profile_video_url: string;
+  logo_url: string;
+  description: string;
+  website_item_url: string;
+  submit_source_url: string;
+  photo_urls: string[];
+  is_akhwat: boolean;
+  is_ikhwan: boolean;
+  is_full_day: boolean;
+  is_boarding: boolean;
+  has_paket_a: boolean;
+  has_paket_b: boolean;
+  has_paket_c: boolean;
+  facilities: string[];
+  publish_to_home_slider: boolean;
+  publish_to_popup: boolean;
+  popup_type: 'open' | 'instant';
+  home_slide_id?: number | null;
+  popup_id?: number | null;
+  show_in_list: boolean;
+  is_active: boolean;
+  sort_order: number;
 }

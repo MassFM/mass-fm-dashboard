@@ -1,10 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Pencil, Trash2, MapPin, Phone, BookOpen, Radio, X, Map, Tag, Users, Loader2, Copy, Navigation, Search } from 'lucide-react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { Plus, Pencil, Trash2, MapPin, Phone, BookOpen, Radio, X, Map, Tag, Users, Loader2, Copy } from 'lucide-react';
 
 interface KajianOffline {
   id?: string;
@@ -15,6 +13,7 @@ interface KajianOffline {
   description: string;
   tempat: string;
   alamat: string;
+  map_url: string;
   latitude: number | null;
   longitude: number | null;
   contact_person: string;
@@ -49,6 +48,7 @@ const REGION_API = 'https://api-regional-indonesia.vercel.app';
 
 const emptyForm: KajianOffline = {
   title: '', pemateri: '', pemateri_bio: '', materi: '', description: '', tempat: '', alamat: '',
+  map_url: '',
   latitude: null, longitude: null, contact_person: '', contact_phone: '',
   hari: '', jam: '', is_relay: false, kitab_name: '', file_url: '', image_url: '', is_active: true,
   provinsi: '', kota: '', kecamatan: '', desa: '', kategori: '', audience: 'Umum', pekan: 'semua',
@@ -84,129 +84,6 @@ export default function KajianOfflinePage() {
   const [selCityId, setSelCityId] = useState<string>('');
   const [selDistId, setSelDistId] = useState<string>('');
   const [loadingRegion, setLoadingRegion] = useState<string>('');
-
-  // Map picker state
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const markerRef = useRef<L.Marker | null>(null);
-  const [showMapPicker, setShowMapPicker] = useState(false);
-  const [mapSearchQuery, setMapSearchQuery] = useState('');
-  const [mapSearching, setMapSearching] = useState(false);
-  const [mapSearchResults, setMapSearchResults] = useState<{ display_name: string; lat: string; lon: string }[]>([]);
-
-  // Geocode search using Nominatim
-  async function handleMapSearch(e?: React.FormEvent) {
-    e?.preventDefault();
-    if (!mapSearchQuery.trim()) return;
-    setMapSearching(true);
-    setMapSearchResults([]);
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(mapSearchQuery)}&limit=5&countrycodes=id`,
-        { headers: { 'Accept-Language': 'id' } }
-      );
-      const data = await res.json();
-      setMapSearchResults(data);
-    } catch {
-      setMapSearchResults([]);
-    }
-    setMapSearching(false);
-  }
-
-  function selectMapSearchResult(lat: string, lon: string) {
-    const latNum = parseFloat(lat);
-    const lngNum = parseFloat(lon);
-    updateField('latitude', parseFloat(latNum.toFixed(7)));
-    updateField('longitude', parseFloat(lngNum.toFixed(7)));
-    setMapSearchResults([]);
-    setMapSearchQuery('');
-    // Pan map
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.setView([latNum, lngNum], 16);
-      const icon = L.icon({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
-      });
-      if (markerRef.current) {
-        markerRef.current.setLatLng([latNum, lngNum]);
-      } else {
-        markerRef.current = L.marker([latNum, lngNum], { icon }).addTo(mapInstanceRef.current);
-      }
-    }
-  }
-
-  // Initialize / destroy Leaflet map
-  useEffect(() => {
-    if (!showMapPicker || !mapContainerRef.current) return;
-    // Avoid double-init
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.invalidateSize();
-      return;
-    }
-    const defaultLat = form.latitude ?? -7.43;
-    const defaultLng = form.longitude ?? 110.84;
-    const map = L.map(mapContainerRef.current, { attributionControl: false }).setView([defaultLat, defaultLng], form.latitude ? 15 : 6);
-
-    // Google Maps tile layers
-    const googleRoadmap = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20 });
-    const googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20 });
-    const googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20 });
-    googleRoadmap.addTo(map); // default layer
-    L.control.layers({ 'Peta': googleRoadmap, 'Satelit': googleSatellite, 'Hybrid': googleHybrid }, {}, { position: 'topright' }).addTo(map);
-
-    mapInstanceRef.current = map;
-
-    // Custom marker icon (fix default icon issue with bundlers)
-    const icon = L.icon({
-      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
-    });
-
-    if (form.latitude && form.longitude) {
-      markerRef.current = L.marker([form.latitude, form.longitude], { icon }).addTo(map);
-    }
-
-    map.on('click', (e: L.LeafletMouseEvent) => {
-      const { lat, lng } = e.latlng;
-      updateField('latitude', parseFloat(lat.toFixed(7)));
-      updateField('longitude', parseFloat(lng.toFixed(7)));
-      if (markerRef.current) {
-        markerRef.current.setLatLng([lat, lng]);
-      } else {
-        markerRef.current = L.marker([lat, lng], { icon }).addTo(map);
-      }
-    });
-
-    return () => {
-      map.remove();
-      mapInstanceRef.current = null;
-      markerRef.current = null;
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showMapPicker]);
-
-  // Sync marker when form lat/lng changes from manual input
-  useEffect(() => {
-    if (!mapInstanceRef.current) return;
-    if (form.latitude && form.longitude) {
-      const icon = L.icon({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
-      });
-      if (markerRef.current) {
-        markerRef.current.setLatLng([form.latitude, form.longitude]);
-      } else {
-        markerRef.current = L.marker([form.latitude, form.longitude], { icon }).addTo(mapInstanceRef.current);
-      }
-      mapInstanceRef.current.setView([form.latitude, form.longitude], 15);
-    }
-  }, [form.latitude, form.longitude]);
 
   const fetchRegion = useCallback(async (endpoint: string): Promise<RegionItem[]> => {
     try {
@@ -245,7 +122,11 @@ export default function KajianOfflinePage() {
   };
 
   const openEdit = (item: KajianOffline) => {
-    setForm({ ...item });
+    setForm({
+      ...emptyForm,
+      ...item,
+      map_url: item.map_url || '',
+    });
     setEditingId(item.id!);
     setShowForm(true);
   };
@@ -268,7 +149,6 @@ export default function KajianOfflinePage() {
     setShowForm(false);
     setEditingId(null);
     setForm(emptyForm);
-    setShowMapPicker(false);
   };
 
   const saveForm = async () => {
@@ -285,6 +165,7 @@ export default function KajianOfflinePage() {
       description: form.description.trim(),
       tempat: form.tempat.trim(),
       alamat: form.alamat.trim(),
+      map_url: form.map_url.trim(),
       latitude: form.latitude,
       longitude: form.longitude,
       contact_person: form.contact_person.trim(),
@@ -404,62 +285,14 @@ export default function KajianOfflinePage() {
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none" placeholder="Contoh: 06:00 - 07:30" />
               </div>
               <div className="md:col-span-2">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-slate-500">Lokasi (Latitude & Longitude)</label>
-                  <button type="button" onClick={() => { setShowMapPicker(v => !v); setTimeout(() => mapInstanceRef.current?.invalidateSize(), 200); }}
-                    className="flex items-center gap-1 text-[10px] text-purple-500 hover:text-purple-700 font-semibold">
-                    <Navigation size={10} />{showMapPicker ? 'Sembunyikan Peta' : 'Pilih di Peta'}
-                  </button>
-                </div>
-                {showMapPicker && (
-                  <div className="mb-3 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
-                    {/* Map Search */}
-                    <form onSubmit={handleMapSearch} className="flex items-center gap-2 p-2 bg-white border-b border-slate-100">
-                      <div className="relative flex-1">
-                        <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                          type="text"
-                          value={mapSearchQuery}
-                          onChange={e => setMapSearchQuery(e.target.value)}
-                          placeholder="Cari lokasi..."
-                          className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:ring-2 focus:ring-purple-200 outline-none"
-                        />
-                      </div>
-                      <button type="submit" disabled={mapSearching || !mapSearchQuery.trim()}
-                        className="px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 disabled:opacity-50 transition flex items-center gap-1">
-                        {mapSearching ? <Loader2 size={12} className="animate-spin" /> : <Search size={12} />}
-                        Cari
-                      </button>
-                    </form>
-                    {/* Search Results */}
-                    {mapSearchResults.length > 0 && (
-                      <div className="max-h-36 overflow-y-auto bg-white border-b border-slate-100">
-                        {mapSearchResults.map((r, i) => (
-                          <button key={i} type="button"
-                            onClick={() => selectMapSearchResult(r.lat, r.lon)}
-                            className="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-purple-50 transition border-b border-slate-50 last:border-0 flex items-start gap-2">
-                            <MapPin size={12} className="text-purple-500 mt-0.5 flex-shrink-0" />
-                            <span className="line-clamp-2">{r.display_name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <div ref={mapContainerRef} style={{ height: 400, width: '100%' }} />
-                    <p className="text-[10px] text-slate-400 text-center py-1 bg-slate-50">Klik pada peta untuk menentukan titik lokasi</p>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] text-slate-400 mb-0.5">Latitude</label>
-                    <input type="number" step="any" value={form.latitude ?? ''} onChange={e => updateField('latitude', e.target.value ? parseFloat(e.target.value) : null)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none" placeholder="-7.4300" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 mb-0.5">Longitude</label>
-                    <input type="number" step="any" value={form.longitude ?? ''} onChange={e => updateField('longitude', e.target.value ? parseFloat(e.target.value) : null)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none" placeholder="111.0100" />
-                  </div>
-                </div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Link Google Maps</label>
+                <input
+                  type="url"
+                  value={form.map_url}
+                  onChange={e => updateField('map_url', e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none"
+                  placeholder="https://maps.google.com/..."
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Contact Person</label>

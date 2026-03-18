@@ -37,6 +37,7 @@ const ROUTE_OPTIONS = [
   { value: 'doa', label: 'Halaman Doa Harian' },
   { value: 'schedule', label: 'Halaman Jadwal' },
   { value: 'chat', label: 'Halaman Live Chat' },
+  { value: 'school_info', label: 'Halaman Info Sekolah' },
 ];
 
 const DEFAULT_BUTTONS: CustomButton[] = [
@@ -51,12 +52,7 @@ export default function MenuSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    loadButtons();
-  }, []);
-
   async function loadButtons() {
-    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('app_settings')
@@ -83,6 +79,14 @@ export default function MenuSettingsPage() {
     }
     setLoading(false);
   }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadButtons();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   async function saveButtons() {
     setSaving(true);

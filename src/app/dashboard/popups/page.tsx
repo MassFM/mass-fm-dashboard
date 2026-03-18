@@ -27,6 +27,7 @@ const APP_SCREENS: { value: string; label: string; group: string }[] = [
   { value: 'podcast', label: 'Podcast', group: 'Kajian & Konten' },
   { value: 'ebook', label: 'Ebook Islami', group: 'Kajian & Konten' },
   { value: 'kajian_offline', label: 'Kajian Rutin', group: 'Kajian & Konten' },
+  { value: 'school_info', label: 'Info Sekolah', group: 'Kajian & Konten' },
   { value: 'mimbar', label: 'Mimbar', group: 'Kajian & Konten' },
   { value: 'greeting_card', label: 'Kartu Ucapan', group: 'Kajian & Konten' },
   { value: 'event', label: 'Event & Acara', group: 'Kajian & Konten' },
@@ -287,8 +288,9 @@ export default function PopupsPage() {
           .getPublicUrl(fileName);
         setForm({ ...form, image_url: urlData.publicUrl, click_area: null });
       }
-    } catch (e: any) {
-      alert('Error upload: ' + (e?.message || 'Unknown'));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown';
+      alert('Error upload: ' + message);
     }
     setUploading(false);
     // Reset input
@@ -382,8 +384,9 @@ export default function PopupsPage() {
       }
 
       fetchPopups();
-    } catch (e: any) {
-      alert('Gagal mengirim popup: ' + (e?.message || 'Unknown error'));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert('Gagal mengirim popup: ' + message);
     }
     setPushing(null);
   };

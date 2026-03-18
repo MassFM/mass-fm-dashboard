@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Calendar, Image as ImageIcon, Heart, LogOut, Radio, MessageSquare, MessageCircleQuestion, Headphones, BarChart3, Bell, MapPin, Settings, MessageSquareDashed, MessageCircle, BookOpen, BookOpenCheck, CalendarClock, AlertTriangle, Share2, MessageSquareText, Moon, Menu, Clock, Star, Smartphone, Palette, Play, PartyPopper, FolderOpen, CalendarDays, FileImage, Megaphone, LineChart, FileText, Mic, MessageCircleHeart, GalleryHorizontalEnd, CalendarRange } from 'lucide-react';
+import { Calendar, Image as ImageIcon, Heart, LogOut, Radio, MessageSquare, MessageCircleQuestion, Headphones, BarChart3, Bell, MapPin, Settings, MessageSquareDashed, MessageCircle, BookOpen, BookOpenCheck, CalendarClock, AlertTriangle, Share2, MessageSquareText, Moon, Menu, Clock, Star, Smartphone, Palette, Play, PartyPopper, FolderOpen, CalendarDays, FileImage, Megaphone, LineChart, FileText, Mic, MessageCircleHeart, GalleryHorizontalEnd, CalendarRange, School } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -31,6 +31,7 @@ const menuGroups: MenuGroup[] = [
       { name: 'Event & Acara', href: '/dashboard/events', icon: CalendarDays },
       { name: 'Ebook Islami', href: '/dashboard/ebooks', icon: BookOpenCheck },
       { name: 'Mimbar', href: '/dashboard/mimbar', icon: Mic },
+      { name: 'Info Sekolah', href: '/dashboard/sekolah-info', icon: School },
     ],
   },
   {

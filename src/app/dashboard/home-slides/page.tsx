@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { HomeSlide } from '@/types/database';
@@ -24,6 +25,7 @@ const CONTENT_TYPES = [
   { value: 'podcast', label: 'Podcast', color: '#e74c3c' },
   { value: 'ebook', label: 'Ebook', color: '#2980b9' },
   { value: 'event', label: 'Event', color: '#d35400' },
+  { value: 'school_info', label: 'Info Sekolah', color: '#16a085' },
 ];
 
 const ACTION_TYPES = [
@@ -46,6 +48,7 @@ const CONTENT_TABLE_MAP: Record<string, { table: string; idCol: string; titleCol
   podcast: { table: 'podcasts', idCol: 'id', titleCol: 'title' },
   ebook: { table: 'ebooks', idCol: 'id', titleCol: 'title' },
   event: { table: 'events', idCol: 'id', titleCol: 'title' },
+  school_info: { table: 'school_infos', idCol: 'id', titleCol: 'school_name' },
 };
 
 // ─── HELPERS ────────────────────────────────────────────────
@@ -115,9 +118,9 @@ export default function HomeSlides() {
         .order(mapping.titleCol, { ascending: true })
         .limit(200);
       if (data) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const contentRows = data as unknown as Array<Record<string, string | number | null>>;
         setContentItems(
-          (data as any[]).map((d) => ({
+          contentRows.map((d) => ({
             id: String(d[mapping.idCol] ?? ''),
             title: String(d[mapping.titleCol] ?? '(tanpa judul)'),
           }))
@@ -301,7 +304,10 @@ export default function HomeSlides() {
   // ─── DUPLICATE ──────────────────────────────────────────────
 
   async function duplicateSlide(slide: HomeSlide) {
-    const { id, created_at, updated_at, ...rest } = slide;
+    const { id: removedId, created_at: removedCreatedAt, updated_at: removedUpdatedAt, ...rest } = slide;
+    void removedId;
+    void removedCreatedAt;
+    void removedUpdatedAt;
     const payload = { ...rest, title: rest.title + ' (copy)', sort_order: slides.length };
     const { error } = await supabase.from('home_slides').insert(payload);
     if (!error) await fetchSlides();
@@ -398,11 +404,16 @@ export default function HomeSlides() {
           <div className="flex gap-4 overflow-x-auto pb-2">
             {slides.filter(s => s.is_active).map(slide => (
               <div key={slide.id} className="flex-shrink-0 w-72 h-40 rounded-2xl overflow-hidden relative group">
-                <img
+                <Image
                   src={slide.image_url}
                   alt={slide.title}
+                  width={288}
+                  height={160}
                   className="w-full h-full object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="288" height="160"><rect fill="%23e2e8f0" width="288" height="160"/><text x="50%" y="50%" fill="%2394a3b8" text-anchor="middle" dy=".3em" font-size="14">No Image</text></svg>'; }}
+                  unoptimized
+                  onError={(event) => {
+                    event.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="288" height="160"><rect fill="%23e2e8f0" width="288" height="160"/><text x="50%" y="50%" fill="%2394a3b8" text-anchor="middle" dy=".3em" font-size="14">No Image</text></svg>';
+                  }}
                 />
                 {/* Overlay */}
                 {(slide.title || slide.badge_text) && (
@@ -489,11 +500,16 @@ export default function HomeSlides() {
 
                 {/* Thumbnail */}
                 <div className="w-28 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100">
-                  <img
+                  <Image
                     src={slide.image_url}
                     alt={slide.title}
+                    width={112}
+                    height={64}
                     className="w-full h-full object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="112" height="64"><rect fill="%23e2e8f0" width="112" height="64"/><text x="50%" y="50%" fill="%2394a3b8" text-anchor="middle" dy=".3em" font-size="10">No Img</text></svg>'; }}
+                    unoptimized
+                    onError={(event) => {
+                      event.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="112" height="64"><rect fill="%23e2e8f0" width="112" height="64"/><text x="50%" y="50%" fill="%2394a3b8" text-anchor="middle" dy=".3em" font-size="10">No Img</text></svg>';
+                    }}
                   />
                 </div>
 
@@ -664,10 +680,13 @@ export default function HomeSlides() {
                   {/* Preview */}
                   <div className="w-40 h-24 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 border-2 border-dashed border-slate-200">
                     {(file || form.image_url) ? (
-                      <img
-                        src={file ? URL.createObjectURL(file) : form.image_url}
+                      <Image
+                        src={file ? URL.createObjectURL(file) : (form.image_url || '')}
                         alt="Preview"
+                        width={160}
+                        height={96}
                         className="w-full h-full object-cover"
+                        unoptimized
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
@@ -809,6 +828,7 @@ export default function HomeSlides() {
                     <option value="mimbar">Mimbar</option>
                     <option value="greeting_card">Kartu Ucapan</option>
                     <option value="event">Event &amp; Acara</option>
+                    <option value="school_info">Info Sekolah</option>
                     {/* Lainnya */}
                     <option value="donasi">Donasi</option>
                     <option value="mitra_dakwah">Mitra Dakwah (Iklan)</option>
