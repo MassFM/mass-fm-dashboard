@@ -646,12 +646,27 @@ function ImportTab() {
 
   const fetchPending = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('pending_materials')
-      .select('*')
-      .eq('source_site', 'khotbahjumat.com')
-      .order('created_at', { ascending: false });
-    setPending((data as PendingMaterial[]) || []);
+    // Supabase default limit = 1000, fetch semua dengan pagination
+    let allData: PendingMaterial[] = [];
+    let from = 0;
+    const batchSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data } = await supabase
+        .from('pending_materials')
+        .select('*')
+        .eq('source_site', 'khotbahjumat.com')
+        .order('created_at', { ascending: false })
+        .range(from, from + batchSize - 1);
+
+      const rows = (data as PendingMaterial[]) || [];
+      allData = [...allData, ...rows];
+      hasMore = rows.length === batchSize;
+      from += batchSize;
+    }
+
+    setPending(allData);
     setLoading(false);
   }, []);
 
