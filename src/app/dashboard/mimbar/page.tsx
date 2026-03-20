@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { BookOpen, Plus, Edit2, Trash2, Search, ToggleLeft, ToggleRight, X, Upload, Star, Eye, FileText, Globe, RefreshCw, Check, XCircle, ExternalLink, ArrowRight } from 'lucide-react';
+import { BookOpen, Plus, Edit2, Trash2, Search, ToggleLeft, ToggleRight, X, Upload, Star, Eye, FileText, Globe, RefreshCw, Check, XCircle, ExternalLink, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import RichTextEditor from '@/components/RichTextEditor';
 
 // ═══════════════════════════════════════════════
@@ -628,8 +628,11 @@ function ImportTab() {
   const [pending, setPending] = useState<PendingMaterial[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [pendingPage, setPendingPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
   const [previewItem, setPreviewItem] = useState<PendingMaterial | null>(null);
   const [approveItem, setApproveItem] = useState<PendingMaterial | null>(null);
   const [approveForm, setApproveForm] = useState({
@@ -658,18 +661,21 @@ function ImportTab() {
   const handleSync = async () => {
     setSyncing(true);
     setSyncResult(null);
+    setSyncProgress(null);
     try {
       let totalSynced = 0;
       let totalSkipped = 0;
       let totalWp = 0;
       let totalPages = 1;
 
-      for (let page = 1; page <= Math.min(totalPages, 5); page++) {
+      for (let page = 1; page <= totalPages; page++) {
+        setSyncProgress(`⏳ Mengambil halaman ${page}/${totalPages} dari WordPress...`);
+
         // 1) Fetch posts dari WP via API route (server-side, bypass CORS)
         const res = await fetch('/api/mimbar/wp-sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ page, per_page: 20 }),
+          body: JSON.stringify({ page, per_page: 100 }),
         });
         const result = await res.json();
 
@@ -683,6 +689,8 @@ function ImportTab() {
         const rows = result.rows || [];
 
         if (!rows.length) continue;
+
+        setSyncProgress(`⏳ Menyimpan halaman ${page}/${totalPages} (${rows.length} artikel)...`);
 
         // 2) Upsert ke Supabase dari client (pakai session authenticated)
         const { data, error } = await supabase
@@ -703,6 +711,7 @@ function ImportTab() {
         totalSkipped += rows.length - synced;
       }
 
+      setSyncProgress(null);
       setSyncResult(
         totalSynced > 0
           ? `✅ Berhasil mengimpor ${totalSynced} artikel baru (${totalSkipped} sudah ada). Total di WP: ${totalWp}`
@@ -710,6 +719,7 @@ function ImportTab() {
       );
       fetchPending();
     } catch (err: any) {
+      setSyncProgress(null);
       setSyncResult(`❌ Gagal sync: ${err.message}`);
     } finally {
       setSyncing(false);
@@ -809,6 +819,13 @@ function ImportTab() {
     filterStatus === 'all' ? true : item.status === filterStatus
   );
 
+  // Pagination
+  const totalFilteredPages = Math.ceil(filteredPending.length / ITEMS_PER_PAGE);
+  const paginatedPending = filteredPending.slice(
+    (pendingPage - 1) * ITEMS_PER_PAGE,
+    pendingPage * ITEMS_PER_PAGE
+  );
+
   const statusCounts = {
     all: pending.length,
     draft: pending.filter(p => p.status === 'draft').length,
@@ -843,6 +860,12 @@ function ImportTab() {
             {syncing ? 'Menyinkronkan...' : 'Sync dari WordPress'}
           </button>
         </div>
+        {syncProgress && (
+          <div className="mt-4 px-4 py-3 rounded-xl text-sm bg-amber-50 text-amber-700 flex items-center gap-2">
+            <RefreshCw size={14} className="animate-spin" />
+            {syncProgress}
+          </div>
+        )}
         {syncResult && (
           <div className={`mt-4 px-4 py-3 rounded-xl text-sm ${
             syncResult.startsWith('✅') ? 'bg-emerald-50 text-emerald-700' :
@@ -864,7 +887,7 @@ function ImportTab() {
         ].map((stat) => (
           <button
             key={stat.key}
-            onClick={() => setFilterStatus(stat.key)}
+            onClick={() => { setFilterStatus(stat.key); setPendingPage(1); }}
             className={`bg-white rounded-xl p-4 border transition text-left ${
               filterStatus === stat.key ? 'ring-2 ring-primary/30 border-primary/20' : `border-slate-50 ${stat.bg} hover:shadow-sm`
             }`}
@@ -891,7 +914,7 @@ function ImportTab() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredPending.map((item) => {
+          {paginatedPending.map((item) => {
             const notes = parseNotes(item.notes);
             return (
               <div key={item.id} className="bg-white rounded-2xl p-5 border border-slate-50 hover:shadow-md transition">
@@ -969,6 +992,55 @@ function ImportTab() {
               </div>
             );
           })}
+
+          {/* Pagination Controls */}
+          {totalFilteredPages > 1 && (
+            <div className="flex items-center justify-between pt-4">
+              <p className="text-xs text-slate-400">
+                Menampilkan {(pendingPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(pendingPage * ITEMS_PER_PAGE, filteredPending.length)} dari {filteredPending.length} artikel
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPendingPage(p => Math.max(1, p - 1))}
+                  disabled={pendingPage === 1}
+                  className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                {Array.from({ length: totalFilteredPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === totalFilteredPages || Math.abs(p - pendingPage) <= 2)
+                  .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                    if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('...');
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, idx) =>
+                    typeof p === 'string' ? (
+                      <span key={`dots-${idx}`} className="px-2 text-xs text-slate-300">...</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => setPendingPage(p)}
+                        className={`w-9 h-9 rounded-lg text-sm font-medium transition ${
+                          pendingPage === p
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'text-slate-500 hover:bg-slate-50 border border-slate-200'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )}
+                <button
+                  onClick={() => setPendingPage(p => Math.min(totalFilteredPages, p + 1))}
+                  disabled={pendingPage === totalFilteredPages}
+                  className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
