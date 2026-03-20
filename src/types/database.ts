@@ -365,6 +365,7 @@ export interface AdsConfig {
   is_enabled: boolean;
   interstitial_enabled: boolean;
   interstitial_throttle_minutes: number;
+  show_pricing_page?: boolean;
   catalog_title: string;
   catalog_subtitle: string;
   regulations_html: string;
@@ -380,6 +381,7 @@ export interface HomeSlide {
   content_type: string;
   content_id?: string | null;
   image_url: string;
+  video_url?: string;
   title: string;
   subtitle: string;
   badge_text: string;

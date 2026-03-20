@@ -26,12 +26,14 @@ const CONTENT_TYPES = [
   { value: 'ebook', label: 'Ebook', color: '#2980b9' },
   { value: 'event', label: 'Event', color: '#d35400' },
   { value: 'school_info', label: 'Info Sekolah', color: '#16a085' },
+  { value: 'video', label: 'Video', color: '#c0392b' },
 ];
 
 const ACTION_TYPES = [
   { value: 'preview', label: 'Preview Gambar', desc: 'Buka gambar fullscreen' },
   { value: 'screen', label: 'Buka Screen', desc: 'Navigasi ke halaman fitur' },
   { value: 'url', label: 'Buka URL', desc: 'Buka link di browser' },
+  { value: 'video', label: 'Putar Video', desc: 'Buka video YouTube/URL' },
   { value: 'none', label: 'Tanpa Aksi', desc: 'Tidak ada aksi saat di-tap' },
 ];
 
@@ -49,6 +51,7 @@ const CONTENT_TABLE_MAP: Record<string, { table: string; idCol: string; titleCol
   ebook: { table: 'ebooks', idCol: 'id', titleCol: 'title' },
   event: { table: 'events', idCol: 'id', titleCol: 'title' },
   school_info: { table: 'school_infos', idCol: 'id', titleCol: 'school_name' },
+  video: null,
 };
 
 // ─── HELPERS ────────────────────────────────────────────────
@@ -75,6 +78,7 @@ export default function HomeSlides() {
   const [form, setForm] = useState<Partial<HomeSlide>>({
     content_type: 'poster',
     image_url: '',
+    video_url: '',
     title: '',
     subtitle: '',
     badge_text: '',
@@ -198,6 +202,7 @@ export default function HomeSlides() {
         content_type: form.content_type || 'poster',
         content_id: form.content_id || null,
         image_url: imageUrl,
+        video_url: form.video_url || '',
         title: form.title || '',
         subtitle: form.subtitle || '',
         badge_text: form.badge_text || '',
@@ -241,6 +246,7 @@ export default function HomeSlides() {
     setForm({
       content_type: 'poster',
       image_url: '',
+      video_url: '',
       title: '',
       subtitle: '',
       badge_text: '',
@@ -857,9 +863,28 @@ export default function HomeSlides() {
                 </div>
               )}
 
+              {/* Video URL — for video content or video action type */}
+              {(form.content_type === 'video' || form.action_type === 'video') && (
+                <div className="rounded-xl bg-red-50 border border-red-200 p-4 space-y-2">
+                  <label className="text-sm font-medium text-red-800 mb-1 flex items-center gap-2">
+                    ▶️ URL Video (YouTube / URL langsung)
+                  </label>
+                  <input
+                    type="url"
+                    value={form.video_url || ''}
+                    onChange={e => setForm(f => ({ ...f, video_url: e.target.value }))}
+                    placeholder="https://youtube.com/watch?v=... atau https://example.com/video.mp4"
+                    className="w-full px-3 py-2.5 rounded-xl border border-red-300 text-sm focus:outline-none focus:ring-2 focus:ring-red-300/30"
+                  />
+                  <p className="text-xs text-red-600">
+                    Link YouTube akan dibuka di in-app browser. Gambar thumbnail tetap diperlukan sebagai cover slide.
+                  </p>
+                </div>
+              )}
+
               {/* Scheduling */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                <label className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                   <Calendar size={14} />
                   Penjadwalan (Opsional)
                 </label>

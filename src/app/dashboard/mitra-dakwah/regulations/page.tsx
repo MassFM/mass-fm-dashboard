@@ -13,6 +13,7 @@ const defaultConfig: AdsConfig = {
   is_enabled: true,
   interstitial_enabled: true,
   interstitial_throttle_minutes: 30,
+  show_pricing_page: true,
   catalog_title: 'Mitra Dakwah',
   catalog_subtitle: 'Partner & Iklan Radio Mass FM',
   regulations_html: '<p>Hubungi admin untuk informasi lebih lanjut.</p>',
@@ -160,6 +161,18 @@ export default function MitraDakwahRegulationsPage() {
             <div>
               <p className="text-sm font-medium text-slate-700">Interstitial Aktif</p>
               <p className="text-xs text-slate-400">Tampilkan popup iklan interstitial</p>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={config.show_pricing_page ?? true}
+              onChange={e => setConfig(prev => ({ ...prev, show_pricing_page: e.target.checked }))}
+              className="rounded w-5 h-5"
+            />
+            <div>
+              <p className="text-sm font-medium text-slate-700">Tampilkan Paket Iklan</p>
+              <p className="text-xs text-slate-400">Tampilkan halaman harga paket iklan di aplikasi</p>
             </div>
           </label>
         </div>
