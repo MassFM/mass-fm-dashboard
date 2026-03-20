@@ -1,8 +1,4 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 const WP_API_URL = 'https://khotbahjumat.com/wp-json/wp/v2/posts';
 
@@ -33,39 +29,64 @@ function decodeHtmlEntities(text: string): string {
     .trim();
 }
 
+/**
+ * POST — Fetch posts dari WordPress, return data siap upsert
+ * Supabase upsert dilakukan di client (authenticated session)
+ */
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
     const page = body.page || 1;
     const perPage = body.per_page || 20;
 
-    // Fetch posts dari WordPress REST API
-    const wpRes = await fetch(
-      `${WP_API_URL}?per_page=${perPage}&page=${page}&_embed&orderby=date&order=desc`,
-      {
-        headers: { 'User-Agent': 'MassFM-Dashboard/1.0' },
-        next: { revalidate: 0 },
-      }
-    );
+    const wpUrl = `${WP_API_URL}?per_page=${perPage}&page=${page}&_embed&orderby=date&order=desc`;
+
+    // Fetch posts dari WordPress REST API (server-side, no CORS)
+    const wpRes = await fetch(wpUrl, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; MassFM-Dashboard/1.0)',
+        'Accept': 'application/json',
+      },
+      cache: 'no-store',
+    });
 
     if (!wpRes.ok) {
+      const errorBody = await wpRes.text().catch(() => '');
       return NextResponse.json(
-        { error: `WordPress API error: ${wpRes.status} ${wpRes.statusText}` },
+        { error: `WordPress API error: ${wpRes.status} ${wpRes.statusText}`, detail: errorBody.substring(0, 300) },
         { status: 502 }
       );
     }
 
-    const posts: WPPost[] = await wpRes.json();
-    const totalPages = parseInt(wpRes.headers.get('X-WP-TotalPages') || '1');
-    const totalPosts = parseInt(wpRes.headers.get('X-WP-Total') || '0');
+    // Pastikan response berupa JSON (bukan HTML dari Cloudflare)
+    const contentType = wpRes.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const htmlBody = await wpRes.text().catch(() => '');
+      return NextResponse.json(
+        { error: `Response bukan JSON (${contentType})`, detail: htmlBody.substring(0, 300) },
+        { status: 502 }
+      );
+    }
 
-    if (!posts.length) {
+    let posts: WPPost[];
+    try {
+      posts = await wpRes.json();
+    } catch {
+      return NextResponse.json(
+        { error: 'Gagal parse response JSON dari WordPress' },
+        { status: 502 }
+      );
+    }
+
+    const totalPages = parseInt(wpRes.headers.get('X-WP-TotalPages') || '1');
+    const totalPosts = parseInt(wpRes.headers.get('X-WP-Total') || String(posts.length));
+
+    if (!Array.isArray(posts) || !posts.length) {
       return NextResponse.json({
-        synced: 0,
-        skipped: 0,
+        rows: [],
         total_wp: totalPosts,
         total_pages: totalPages,
-        message: 'Tidak ada post ditemukan',
       });
     }
 
@@ -93,69 +114,13 @@ export async function POST(request: Request) {
       };
     });
 
-    // Upsert ke pending_materials — skip duplikat berdasarkan source_url
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    const { data, error } = await supabase
-      .from('pending_materials')
-      .upsert(rows as any, {
-        onConflict: 'source_url',
-        ignoreDuplicates: true,
-      })
-      .select('id');
-
-    if (error) {
-      return NextResponse.json(
-        { error: `Supabase error: ${error.message}` },
-        { status: 500 }
-      );
-    }
-
-    const synced = data?.length || 0;
-    const skipped = posts.length - synced;
-
     return NextResponse.json({
-      synced,
-      skipped,
+      rows,
       total_wp: totalPosts,
       total_pages: totalPages,
-      message: synced > 0
-        ? `Berhasil mengimpor ${synced} artikel baru`
-        : `Semua ${posts.length} artikel sudah ada di database`,
     });
   } catch (err: any) {
     console.error('WP Sync error:', err);
-    return NextResponse.json(
-      { error: err.message || 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-/** GET — cek status terakhir sync */
-export async function GET() {
-  try {
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { data: stats } = await supabase
-      .from('pending_materials')
-      .select('status')
-      .eq('source_site', 'khotbahjumat.com');
-
-    const counts = {
-      draft: 0,
-      reviewed: 0,
-      published: 0,
-      rejected: 0,
-      total: stats?.length || 0,
-    };
-
-    stats?.forEach((row: any) => {
-      const s = row.status as keyof typeof counts;
-      if (s in counts) counts[s]++;
-    });
-
-    return NextResponse.json(counts);
-  } catch (err: any) {
     return NextResponse.json(
       { error: err.message || 'Internal server error' },
       { status: 500 }

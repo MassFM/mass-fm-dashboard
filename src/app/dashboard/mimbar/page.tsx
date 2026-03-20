@@ -665,6 +665,7 @@ function ImportTab() {
       let totalPages = 1;
 
       for (let page = 1; page <= Math.min(totalPages, 5); page++) {
+        // 1) Fetch posts dari WP via API route (server-side, bypass CORS)
         const res = await fetch('/api/mimbar/wp-sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -673,14 +674,33 @@ function ImportTab() {
         const result = await res.json();
 
         if (!res.ok) {
-          setSyncResult(`❌ Error: ${result.error}`);
+          setSyncResult(`❌ Error: ${result.error}${result.detail ? ` — ${result.detail}` : ''}`);
           break;
         }
 
-        totalSynced += result.synced;
-        totalSkipped += result.skipped;
         totalWp = result.total_wp;
         totalPages = result.total_pages;
+        const rows = result.rows || [];
+
+        if (!rows.length) continue;
+
+        // 2) Upsert ke Supabase dari client (pakai session authenticated)
+        const { data, error } = await supabase
+          .from('pending_materials')
+          .upsert(rows, {
+            onConflict: 'source_url',
+            ignoreDuplicates: true,
+          })
+          .select('id');
+
+        if (error) {
+          setSyncResult(`❌ Supabase error: ${error.message}`);
+          break;
+        }
+
+        const synced = data?.length || 0;
+        totalSynced += synced;
+        totalSkipped += rows.length - synced;
       }
 
       setSyncResult(
