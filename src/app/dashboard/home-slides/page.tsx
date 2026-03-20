@@ -192,11 +192,7 @@ export default function HomeSlides() {
         imageUrl = url;
       }
 
-      if (!imageUrl) {
-        alert('Gambar wajib diisi!');
-        setSaving(false);
-        return;
-      }
+      // Image is optional — video slides may not need a thumbnail
 
       const payload = {
         content_type: form.content_type || 'poster',
@@ -681,7 +677,7 @@ export default function HomeSlides() {
 
               {/* Image */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Gambar Slide *</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Gambar Slide (Opsional)</label>
                 <div className="flex items-start gap-4">
                   {/* Preview */}
                   <div className="w-40 h-24 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 border-2 border-dashed border-slate-200">
