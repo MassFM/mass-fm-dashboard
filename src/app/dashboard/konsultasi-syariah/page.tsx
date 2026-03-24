@@ -95,6 +95,14 @@ function parseNotes(notes: string): WPNotes {
   try { return JSON.parse(notes); } catch { return {}; }
 }
 
+function getErrorMessage(err: any): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object') {
+    return err.message || err.error_description || err.code || JSON.stringify(err, null, 2);
+  }
+  return String(err);
+}
+
 function formatDate(dateStr: string): string {
   try {
     return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -177,39 +185,39 @@ function MateriTab() {
 
   useEffect(() => { fetchMaterials(); }, [fetchMaterials]);
 
-  const handleSave = async () => {
-    if (!form.title.trim()) return alert('Judul wajib diisi');
-    setSaving(true);
-    try {
-      const payload = {
-        title: form.title.trim(),
-        content_html: form.content_html,
-        excerpt: form.excerpt || generateExcerpt(form.content_html),
-        author: form.author.trim() || 'Anonim',
-        category: form.category,
-        reading_time_minutes: form.reading_time_minutes || calcReadingTime(form.content_html),
-        thumbnail_url: form.thumbnail_url,
-        source_url: form.source_url,
-        tags: form.tags,
-        is_featured: form.is_featured,
-        is_active: form.is_active,
-        sort_order: form.sort_order,
-      };
-      if (editing) {
-        await supabase.from('konsultasi_materials').update(payload).eq('id', editing);
-      } else {
-        await supabase.from('konsultasi_materials').insert(payload);
-      }
-      setShowModal(false);
-      setEditing(null);
-      setForm({ ...DEFAULT_FORM });
-      fetchMaterials();
-    } catch (err) {
-      console.error(err);
-      alert('Gagal menyimpan');
+const handleSave = async () => {
+  if (!form.title.trim()) return alert('Judul wajib diisi');
+  setSaving(true);
+  try {
+    const payload = {
+      title: form.title.trim(),
+      content_html: form.content_html,
+      excerpt: form.excerpt || generateExcerpt(form.content_html),
+      author: form.author.trim() || 'Anonim',
+      category: form.category,
+      reading_time_minutes: form.reading_time_minutes || calcReadingTime(form.content_html),
+      thumbnail_url: form.thumbnail_url,
+      source_url: form.source_url,
+      tags: form.tags,
+      is_featured: form.is_featured,
+      is_active: form.is_active,
+      sort_order: form.sort_order,
+    };
+    if (editing) {
+      await supabase.from('konsultasi_materials').update(payload).eq('id', editing);
+    } else {
+      await supabase.from('konsultasi_materials').insert(payload);
     }
-    setSaving(false);
-  };
+    setShowModal(false);
+    setEditing(null);
+    setForm({ ...DEFAULT_FORM });
+    fetchMaterials();
+  } catch (err) {
+    console.error('Save error:', err);
+    alert('Gagal menyimpan: ' + getErrorMessage(err));
+  }
+  setSaving(false);
+};
 
   const handleDelete = async (id: string) => {
     if (!confirm('Hapus materi ini?')) return;
@@ -508,39 +516,39 @@ function ImportTab() {
     setApproveModal(item);
   };
 
-  const handleApprove = async () => {
-    if (!approveModal) return;
-    setApproveSaving(true);
-    try {
-      const { error } = await supabase.from('konsultasi_materials').upsert({
-        title: approveForm.title,
-        content_html: approveForm.content_html,
-        excerpt: approveForm.excerpt || generateExcerpt(approveForm.content_html),
-        author: approveForm.author || 'Anonim',
-        category: approveForm.category,
-        reading_time_minutes: approveForm.reading_time_minutes || calcReadingTime(approveForm.content_html),
-        thumbnail_url: approveForm.thumbnail_url,
-        source_url: approveForm.source_url,
-        tags: approveForm.tags,
-        is_featured: approveForm.is_featured,
-        is_active: true,
-        sort_order: 0,
-      }, { onConflict: 'source_url' });
-      if (error) throw error;
+const handleApprove = async () => {
+  if (!approveModal) return;
+  setApproveSaving(true);
+  try {
+    const { error } = await supabase.from('konsultasi_materials').upsert({
+      title: approveForm.title,
+      content_html: approveForm.content_html,
+      excerpt: approveForm.excerpt || generateExcerpt(approveForm.content_html),
+      author: approveForm.author || 'Anonim',
+      category: approveForm.category,
+      reading_time_minutes: approveForm.reading_time_minutes || calcReadingTime(approveForm.content_html),
+      thumbnail_url: approveForm.thumbnail_url,
+      source_url: approveForm.source_url,
+      tags: approveForm.tags,
+      is_featured: approveForm.is_featured,
+      is_active: true,
+      sort_order: 0,
+    }, { onConflict: 'source_url' });
+    if (error) throw error;
 
-      await supabase.from('pending_konsultasi').update({
-        status: 'approved',
-        approved_at: new Date().toISOString(),
-      }).eq('id', approveModal.id);
+    await supabase.from('pending_konsultasi').update({
+      status: 'approved',
+      approved_at: new Date().toISOString(),
+    }).eq('id', approveModal.id);
 
-      setApproveModal(null);
-      fetchPending();
-    } catch (err) {
-      console.error(err);
-      alert('Gagal approve: ' + (err instanceof Error ? err.message : String(err)));
-    }
-    setApproveSaving(false);
-  };
+    setApproveModal(null);
+    fetchPending();
+  } catch (err) {
+    console.error('Approve error:', err);
+    alert('Gagal approve: ' + getErrorMessage(err));
+  }
+  setApproveSaving(false);
+};
 
   const handleReject = async (id: string) => {
     await supabase.from('pending_konsultasi').update({ status: 'rejected' }).eq('id', id);

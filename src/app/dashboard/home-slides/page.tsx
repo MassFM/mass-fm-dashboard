@@ -27,6 +27,7 @@ const CONTENT_TYPES = [
   { value: 'event', label: 'Event', color: '#d35400' },
   { value: 'school_info', label: 'Info Sekolah', color: '#16a085' },
   { value: 'video', label: 'Video', color: '#c0392b' },
+  { value: 'instagram', label: 'Instagram Carousel', color: '#E4405F' },
 ];
 
 const ACTION_TYPES = [
@@ -52,6 +53,7 @@ const CONTENT_TABLE_MAP: Record<string, { table: string; idCol: string; titleCol
   event: { table: 'events', idCol: 'id', titleCol: 'title' },
   school_info: { table: 'school_infos', idCol: 'id', titleCol: 'school_name' },
   video: null,
+  instagram: null,
 };
 
 // ─── HELPERS ────────────────────────────────────────────────
@@ -856,6 +858,25 @@ export default function HomeSlides() {
                       className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
+                </div>
+              )}
+
+              {/* Instagram URL — for instagram content type */}
+              {form.content_type === 'instagram' && (
+                <div className="rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 border border-pink-200 p-4 space-y-2">
+                  <label className="text-sm font-medium text-pink-800 mb-1 flex items-center gap-2">
+                    📸 Link Instagram Carousel / Post
+                  </label>
+                  <input
+                    type="url"
+                    value={form.action_data || ''}
+                    onChange={e => setForm(f => ({ ...f, action_data: e.target.value, action_type: 'url' }))}
+                    placeholder="https://www.instagram.com/p/... atau https://www.instagram.com/reel/..."
+                    className="w-full px-3 py-2.5 rounded-xl border border-pink-300 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300/30"
+                  />
+                  <p className="text-xs text-pink-600">
+                    Masukkan link post/carousel/reel Instagram. Akan dibuka di in-app WebView saat di-tap di aplikasi.
+                  </p>
                 </div>
               )}
 
