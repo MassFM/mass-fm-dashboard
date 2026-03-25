@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Pencil, Trash2, MapPin, Phone, BookOpen, Radio, X, Map, Tag, Users, Loader2, Copy } from 'lucide-react';
+import { Plus, Pencil, Trash2, MapPin, Phone, BookOpen, Radio, X, Map, Tag, Users, Loader2, Copy, Upload, FileText } from 'lucide-react';
 
 interface KajianOffline {
   id?: string;
@@ -69,6 +69,7 @@ export default function KajianOfflinePage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [kategoriOptions, setKategoriOptions] = useState<string[]>(DEFAULT_KATEGORI);
   const [kategoriMode, setKategoriMode] = useState<'select'|'add'|'manage'>('select');
   const [newKategori, setNewKategori] = useState('');
@@ -310,9 +311,94 @@ export default function KajianOfflinePage() {
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none resize-none" placeholder="Deskripsi kajian" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">URL File/Materi</label>
-                <input type="url" value={form.file_url} onChange={e => updateField('file_url', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none" placeholder="https://..." />
+                <label className="block text-xs font-semibold text-slate-500 mb-1">File Materi (PDF)</label>
+                {form.file_url ? (
+                  <div className="flex items-center gap-2 p-2.5 bg-green-50 border border-green-200 rounded-xl">
+                    <FileText size={18} className="text-green-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-green-700 truncate">
+                        {form.file_url.split('/').pop()?.split('?')[0] || 'file.pdf'}
+                      </p>
+                      <a href={form.file_url} target="_blank" rel="noopener noreferrer"
+                        className="text-[10px] text-green-500 hover:text-green-700 underline truncate block">
+                        Lihat file
+                      </a>
+                    </div>
+                    <button type="button" onClick={async () => {
+                      if (!confirm('Hapus file materi ini?')) return;
+                      // Delete from Supabase Storage
+                      try {
+                        const url = new URL(form.file_url);
+                        const pathParts = url.pathname.split('/storage/v1/object/public/');
+                        if (pathParts.length > 1) {
+                          const fullPath = pathParts[1];
+                          const bucketAndPath = fullPath.split('/');
+                          const bucket = bucketAndPath[0];
+                          const filePath = bucketAndPath.slice(1).join('/');
+                          await supabase.storage.from(bucket).remove([filePath]);
+                        }
+                      } catch {}
+                      updateField('file_url', '');
+                    }}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      disabled={uploadingFile}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (!file.name.toLowerCase().endsWith('.pdf')) {
+                          alert('Hanya file PDF yang diizinkan');
+                          return;
+                        }
+                        if (file.size > 50 * 1024 * 1024) {
+                          alert('Ukuran file maksimal 50MB');
+                          return;
+                        }
+                        setUploadingFile(true);
+                        try {
+                          const timestamp = Date.now();
+                          const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                          const filePath = `kajian-materi/${timestamp}_${safeName}`;
+                          const { error: uploadError } = await supabase.storage
+                            .from('kajian-files')
+                            .upload(filePath, file, { cacheControl: '3600', upsert: false });
+                          if (uploadError) throw uploadError;
+                          const { data: urlData } = supabase.storage
+                            .from('kajian-files')
+                            .getPublicUrl(filePath);
+                          updateField('file_url', urlData.publicUrl);
+                        } catch (err: unknown) {
+                          const msg = err instanceof Error ? err.message : String(err);
+                          alert('Gagal upload: ' + msg);
+                        } finally {
+                          setUploadingFile(false);
+                          e.target.value = '';
+                        }
+                      }}
+                      className="hidden"
+                      id="file-upload-materi"
+                    />
+                    <label htmlFor="file-upload-materi"
+                      className={`flex items-center justify-center gap-2 w-full px-3 py-3 border-2 border-dashed rounded-xl text-sm cursor-pointer transition-colors ${
+                        uploadingFile
+                          ? 'border-purple-300 bg-purple-50 text-purple-400'
+                          : 'border-slate-200 hover:border-purple-300 hover:bg-purple-50 text-slate-400 hover:text-purple-500'
+                      }`}>
+                      {uploadingFile ? (
+                        <><Loader2 size={16} className="animate-spin" /> Mengupload...</>
+                      ) : (
+                        <><Upload size={16} /> Pilih File PDF</>
+                      )}
+                    </label>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">URL Gambar</label>
