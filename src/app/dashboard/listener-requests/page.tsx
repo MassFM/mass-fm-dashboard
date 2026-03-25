@@ -10,11 +10,12 @@ interface ListenerRequest {
   created_at: string;
   request_type: 'PROGRAM' | 'KAJIAN' | 'MUROTAL' | 'LAINNYA';
   user_name: string;
+  user_phone?: string;
   user_location?: string;
-  title_request: string;
-  detail_info?: string;
-  preferred_time?: string;
-  status: 'pending' | 'approved' | 'processed' | 'rejected';
+  title: string;
+  speaker?: string;
+  message?: string;
+  status: 'pending' | 'approved' | 'played' | 'rejected';
 }
 
 export default function ListenerRequests() {
@@ -64,14 +65,16 @@ export default function ListenerRequests() {
 
   const filteredRequests = requests.filter((r) => {
     const matchesSearch = r.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          r.title_request.toLowerCase().includes(searchTerm.toLowerCase());
+                          r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          r.speaker?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          r.message?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch && (filterStatus === 'all' || r.status === filterStatus);
   });
 
-  const statusColors = {
+const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
     approved: 'bg-green-100 text-green-800',
-    processed: 'bg-orange-100 text-orange-800',
+    played: 'bg-purple-100 text-purple-800',
     rejected: 'bg-red-100 text-red-800',
   } as const;
 
@@ -105,7 +108,7 @@ export default function ListenerRequests() {
             <option value="all">Semua Status</option>
             <option value="pending">Pending</option>
             <option value="approved">Disetujui</option>
-            <option value="processed">Diproses</option>
+            <option value="played">Diputar</option>
             <option value="rejected">Ditolak</option>
           </select>
         </div>
@@ -135,15 +138,15 @@ export default function ListenerRequests() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-yellow-400 to-yellow-500 text-white p-6 rounded-2xl shadow-lg">
           <div className="text-sm opacity-90">Pending</div>
-          <div className="text-2xl font-bold mt-1">{requests.filter(r => r.status === 'pending').length}</div>
+  <div className="text-lg font-bold mt-1">{requests.filter(r => r.status === 'pending').length}</div>
         </div>
         <div className="bg-gradient-to-br from-green-400 to-green-500 text-white p-6 rounded-2xl shadow-lg">
           <div className="text-sm opacity-90">Disetujui</div>
-          <div className="text-3xl font-bold mt-1">{requests.filter(r => r.status === 'approved').length}</div>
+          <div className="text-lg font-bold mt-1">{requests.filter(r => r.status === 'approved').length}</div>
         </div>
-        <div className="bg-gradient-to-br from-orange-400 to-orange-500 text-white p-6 rounded-2xl shadow-lg">
-          <div className="text-sm opacity-90">Diproses</div>
-          <div className="text-3xl font-bold mt-1">{requests.filter(r => r.status === 'processed').length}</div>
+        <div className="bg-gradient-to-br from-purple-400 to-purple-600 text-white p-6 rounded-2xl shadow-lg">
+          <div className="text-sm opacity-90">Diputar</div>
+          <div className="text-lg font-bold mt-1">{requests.filter(r => r.status === 'played').length}</div>
         </div>
         <div className="bg-gradient-to-br from-red-400 to-red-500 text-white p-6 rounded-2xl shadow-lg">
           <div className="text-sm opacity-90">Ditolak</div>
@@ -176,15 +179,16 @@ export default function ListenerRequests() {
                   </td>
                   <td className="px-6 py-4 font-medium text-slate-900">
                     {request.user_name}
+                    {request.user_phone && <div className="text-xs text-blue-500">{request.user_phone}</div>}
                     {request.user_location && <div className="text-xs text-slate-500">{request.user_location}</div>}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="font-semibold">{request.title_request}</div>
-                    {request.preferred_time && <div className="text-xs text-slate-500">{request.preferred_time}</div>}
+                    <div className="font-semibold">{request.title}</div>
+                    {request.speaker && <div className="text-xs text-slate-500 font-semibold">{request.speaker}</div>}
                   </td>
                   <td className="px-6 py-4 max-w-xs">
-                    {request.detail_info ? (
-                      <div className="text-sm text-slate-700 line-clamp-2">{request.detail_info}</div>
+                    {request.message ? (
+                      <div className="text-sm text-slate-700 line-clamp-2">{request.message}</div>
                     ) : (
                       <span className="text-slate-400 text-sm">-</span>
                     )}
@@ -212,7 +216,7 @@ export default function ListenerRequests() {
                       >
                         <option value="pending">Pending</option>
                         <option value="approved">Disetujui</option>
-                        <option value="processed">Diproses</option>
+                        <option value="played">Diputar</option>
                         <option value="rejected">Ditolak</option>
                       </select>
                       <button 

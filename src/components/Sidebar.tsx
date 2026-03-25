@@ -51,7 +51,7 @@ const menuGroups: MenuGroup[] = [
       { name: 'Live Chat', href: '/dashboard/chat', icon: MessageCircle },
       { name: 'Tanya Ustadz', href: '/dashboard/questions', icon: MessageCircleQuestion },
 { name: 'Pertanyaan Program', href: '/dashboard/program-questions', icon: MessageSquareText },
-      { name: 'Request Pendengar', href: '/dashboard/listener-requests', icon: MessageSquarePlus },
+{ name: 'Request Pendengar', href: '/dashboard/listener-requests', icon: MessageSquarePlus }, // Dinonaktifkan sementara
       { name: 'Kritik & Saran', href: '/dashboard/feedback', icon: MessageSquare },
     ],
   },

@@ -46,6 +46,7 @@ type FormState = {
   title: string;
   body: string;
   image_url: string;
+  image_urls: string[];  // Multiple images for carousel
   action_type: 'url' | 'whatsapp' | 'screen';
   action_url: string;
   action_label: string;
@@ -59,6 +60,7 @@ const emptyForm: FormState = {
   title: '',
   body: '',
   image_url: '',
+  image_urls: [],
   action_type: 'url',
   action_url: '',
   action_label: 'Selengkapnya',
@@ -286,7 +288,14 @@ export default function PopupsPage() {
         const { data: urlData } = supabase.storage
           .from('popup-images')
           .getPublicUrl(fileName);
-        setForm({ ...form, image_url: urlData.publicUrl, click_area: null });
+        const newUrl = urlData.publicUrl;
+        // Set as main image_url if none, and always add to image_urls array
+        setForm((prev) => ({
+          ...prev,
+          image_url: prev.image_url || newUrl,
+          image_urls: [...prev.image_urls, newUrl],
+          click_area: null,
+        }));
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown';
@@ -299,12 +308,15 @@ export default function PopupsPage() {
 
   const handleSave = async () => {
     setSaving(true);
+    const { image_urls, ...rest } = form;
     const payload = {
-      ...form,
+      ...rest,
       // Bersihkan action_url sesuai tipe
       action_url: form.action_type === 'whatsapp'
         ? form.action_url.replace(/\D/g, '') // Hanya angka untuk WA
         : form.action_url,
+      // Simpan image_urls jika ada lebih dari 1 gambar
+      image_urls: image_urls.length > 0 ? image_urls : null,
       updated_at: new Date().toISOString(),
     };
     if (editId) {
@@ -326,6 +338,7 @@ export default function PopupsPage() {
       title: item.title,
       body: item.body,
       image_url: item.image_url,
+      image_urls: item.image_urls || (item.image_url ? [item.image_url] : []),
       action_type: item.action_type || 'url',
       action_url: item.action_url,
       action_label: item.action_label,
@@ -554,10 +567,17 @@ export default function PopupsPage() {
             </div>
           </div>
 
-          {/* Row 5: Image — URL atau Upload */}
+          {/* Row 5: Image — URL atau Upload (Multi-Image Carousel Support) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-slate-600">Gambar Poster (opsional)</label>
+              <label className="text-sm font-medium text-slate-600">
+                Gambar Poster (opsional)
+                {form.image_urls.length > 1 && (
+                  <span className="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-500">
+                    {form.image_urls.length} gambar — Carousel
+                  </span>
+                )}
+              </label>
               <div className="flex bg-slate-100 rounded-lg p-0.5">
                 <button
                   type="button"
@@ -581,13 +601,32 @@ export default function PopupsPage() {
             </div>
 
             {imageMode === 'url' ? (
-              <input
-                type="url"
-                value={form.image_url}
-                onChange={(e) => setForm({ ...form, image_url: e.target.value, click_area: null })}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none"
-                placeholder="https://link-gambar.com/poster.jpg"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  id="popup-image-url-input"
+                  className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none"
+                  placeholder="https://link-gambar.com/poster.jpg"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById('popup-image-url-input') as HTMLInputElement;
+                    const url = input?.value?.trim();
+                    if (!url) return;
+                    setForm((prev) => ({
+                      ...prev,
+                      image_url: prev.image_url || url,
+                      image_urls: [...prev.image_urls, url],
+                      click_area: null,
+                    }));
+                    input.value = '';
+                  }}
+                  className="px-4 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-medium hover:bg-purple-700 transition-colors whitespace-nowrap"
+                >
+                  <Plus size={14} className="inline mr-1" /> Tambah
+                </button>
+              </div>
             ) : (
               <div className="flex items-center gap-3">
                 <label className="flex-1 relative cursor-pointer">
@@ -608,38 +647,61 @@ export default function PopupsPage() {
                 </label>
               </div>
             )}
+            <p className="text-[10px] text-slate-400">
+              Tambahkan beberapa gambar untuk menampilkan carousel di aplikasi. Gambar pertama juga digunakan sebagai gambar utama.
+            </p>
 
-            {/* Preview gambar */}
-            {form.image_url && (
-              <div className="relative group">
-                <div className="border border-slate-100 rounded-xl overflow-hidden bg-slate-50">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={form.image_url}
-                    alt="Preview poster"
-                    className="w-full max-h-48 object-contain"
-                  />
+            {/* Preview semua gambar (carousel list) */}
+            {form.image_urls.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-3">
+                  {form.image_urls.map((url, idx) => (
+                    <div key={idx} className="relative group w-32 h-24 rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={`Gambar ${idx + 1}`} className="w-full h-full object-cover" />
+                      {idx === 0 && (
+                        <span className="absolute top-1 left-1 bg-purple-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded">
+                          UTAMA
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newUrls = form.image_urls.filter((_, i) => i !== idx);
+                          setForm({
+                            ...form,
+                            image_urls: newUrls,
+                            image_url: newUrls[0] || '',
+                            click_area: null,
+                          });
+                        }}
+                        className="absolute top-1 right-1 bg-red-500 text-white p-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Hapus gambar"
+                      >
+                        <X size={10} />
+                      </button>
+                      <span className="absolute bottom-1 right-1 bg-black/50 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                        {idx + 1}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setForm({ ...form, image_url: '', click_area: null })}
-                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Hapus gambar"
-                >
-                  <X size={14} />
-                </button>
-                <p className="text-[10px] text-slate-400 mt-1 truncate">{form.image_url}</p>
               </div>
             )}
           </div>
 
-          {/* Row 6: Visual Area Picker (only if image exists) */}
-          {form.image_url && (
+          {/* Row 6: Visual Area Picker (only if single image — carousel disables area picking) */}
+          {form.image_url && form.image_urls.length <= 1 && (
             <ClickAreaPicker
               imageUrl={form.image_url}
               clickArea={form.click_area}
               onChange={(area) => setForm({ ...form, click_area: area })}
             />
+          )}
+          {form.image_urls.length > 1 && (
+            <p className="text-xs text-amber-500 flex items-center gap-1.5">
+              <MousePointer2 size={12} /> Area klik tidak tersedia untuk mode carousel (multi-gambar).
+            </p>
           )}
 
           {/* Row 7: Checkboxes */}
@@ -721,6 +783,11 @@ export default function PopupsPage() {
                   {item.click_area && (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-500 flex items-center gap-0.5">
                       <MousePointer2 size={8} /> AREA
+                    </span>
+                  )}
+                  {item.image_urls && item.image_urls.length > 1 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-500 flex items-center gap-0.5">
+                      <ImageIcon size={8} /> {item.image_urls.length} GAMBAR
                     </span>
                   )}
                 </div>

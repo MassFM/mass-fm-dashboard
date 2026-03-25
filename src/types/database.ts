@@ -308,6 +308,7 @@ export interface PopupItem {
   title: string;
   body: string;
   image_url: string;
+  image_urls?: string[];   // Array URL gambar untuk carousel (opsional)
   action_type: 'url' | 'whatsapp' | 'screen';
   action_url: string;
   action_label: string;
