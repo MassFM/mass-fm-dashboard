@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Clock, Calendar, Minus, Plus, Save, RotateCcw, Bell, BellOff, Upload, X, Music, Loader2 } from 'lucide-react';
+import { Clock, Calendar, Minus, Plus, Save, RotateCcw, Bell, BellOff } from 'lucide-react';
 
 interface PrayerOffsets {
   subuh: number;
@@ -17,16 +17,6 @@ interface PrayerNotifConfig {
   enabled: boolean;
   minutes_before: number;
   prayers: string[];
-  audio: PrayerAdzanAudioConfig;
-}
-
-interface PrayerAdzanAudioConfig {
-  enabled: boolean;
-  mode: 'default' | 'single_url' | 'per_prayer';
-  global_url: string;
-  subuh_url: string;
-  per_prayer_urls: Record<string, string>;
-  fallback_to_system_sound: boolean;
 }
 
 const defaultOffsets: PrayerOffsets = {
@@ -51,20 +41,6 @@ const defaultNotifConfig: PrayerNotifConfig = {
   enabled: false,
   minutes_before: 10,
   prayers: ['subuh', 'dzuhur', 'ashar', 'maghrib', 'isya'],
-  audio: {
-    enabled: false,
-    mode: 'default',
-    global_url: '',
-    subuh_url: '',
-    per_prayer_urls: {
-      subuh: '',
-      dzuhur: '',
-      ashar: '',
-      maghrib: '',
-      isya: '',
-    },
-    fallback_to_system_sound: true,
-  },
 };
 
 const allPrayers = [
@@ -74,142 +50,6 @@ const allPrayers = [
   { key: 'maghrib', label: 'Maghrib', emoji: '🌇' },
   { key: 'isya', label: 'Isya', emoji: '🌃' },
 ];
-
-const ADZAN_BUCKET = 'app-assets';
-const ADZAN_FOLDER = 'adzan';
-const MAX_FILE_SIZE_MB = 15;
-
-/** Upload MP3 to Supabase Storage and return public URL */
-async function uploadAdzanFile(file: File, label: string): Promise<string> {
-  if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-    throw new Error(`File terlalu besar (max ${MAX_FILE_SIZE_MB} MB)`);
-  }
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'mp3';
-  const safeName = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  const fileName = `${ADZAN_FOLDER}/${safeName}-${Date.now()}.${ext}`;
-
-  const { error } = await supabase.storage
-    .from(ADZAN_BUCKET)
-    .upload(fileName, file, { cacheControl: '31536000', upsert: false });
-
-  if (error) throw new Error('Upload gagal: ' + error.message);
-
-  const { data: urlData } = supabase.storage.from(ADZAN_BUCKET).getPublicUrl(fileName);
-  return urlData.publicUrl;
-}
-
-/** Reusable audio URL input with file-upload capability */
-function AudioUrlInput({
-  label,
-  value,
-  onChange,
-  placeholder,
-  className = '',
-  inputClassName = '',
-}: {
-  label: string;
-  value: string;
-  onChange: (url: string) => void;
-  placeholder?: string;
-  className?: string;
-  inputClassName?: string;
-}) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState('');
-
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadError('');
-
-    const validTypes = ['audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/wav', 'audio/x-m4a', 'audio/mp4'];
-    if (!validTypes.includes(file.type) && !file.name.match(/\.(mp3|ogg|wav|m4a)$/i)) {
-      setUploadError('Format tidak didukung. Gunakan MP3, OGG, WAV, atau M4A.');
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const publicUrl = await uploadAdzanFile(file, label);
-      onChange(publicUrl);
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Upload gagal');
-    } finally {
-      setUploading(false);
-      // Reset file input so the same file can be re-selected
-      if (fileRef.current) fileRef.current.value = '';
-    }
-  };
-
-  const isUploaded = value.includes(ADZAN_BUCKET);
-  const fileName = isUploaded ? decodeURIComponent(value.split('/').pop() ?? '') : '';
-
-  return (
-    <div className={className}>
-      {/* URL Input */}
-      <div className="relative">
-        <input
-          type="url"
-          value={value}
-          onChange={(e) => { setUploadError(''); onChange(e.target.value); }}
-          placeholder={placeholder ?? `https://.../${label.toLowerCase()}.mp3`}
-          disabled={uploading}
-          className={`w-full rounded-xl border px-3 py-2 pr-24 text-sm text-slate-700 focus:outline-none focus:ring-2 disabled:opacity-50 ${inputClassName || 'border-slate-200 focus:ring-primary/20'}`}
-        />
-        <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-          {value && (
-            <button
-              type="button"
-              onClick={() => { onChange(''); setUploadError(''); }}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-              title="Hapus"
-            >
-              <X size={14} />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium transition-colors disabled:opacity-50"
-            title="Upload file audio"
-          >
-            {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-            {uploading ? 'Uploading…' : 'Upload'}
-          </button>
-        </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".mp3,.ogg,.wav,.m4a,audio/*"
-          onChange={handleFile}
-          className="hidden"
-        />
-      </div>
-
-      {/* Show uploaded file info */}
-      {isUploaded && !uploading && (
-        <div className="flex items-center gap-2 mt-1.5 px-1">
-          <Music size={12} className="text-green-600 shrink-0" />
-          <span className="text-xs text-green-700 truncate">{fileName}</span>
-        </div>
-      )}
-
-      {/* Audio preview */}
-      {value && !uploading && (
-        <div className="mt-2">
-          <audio controls src={value} preload="none" className="w-full h-8 [&::-webkit-media-controls-panel]:bg-slate-50 rounded-lg" />
-        </div>
-      )}
-
-      {/* Upload error */}
-      {uploadError && (
-        <p className="text-xs text-red-500 mt-1">{uploadError}</p>
-      )}
-    </div>
-  );
-}
 
 export default function TimeSettingsPage() {
   const [hijriOffset, setHijriOffset] = useState(0);
@@ -244,14 +84,6 @@ export default function TimeSettingsPage() {
         const nc = (typeof d.prayer_notif_config === 'string'
           ? JSON.parse(d.prayer_notif_config)
           : d.prayer_notif_config) as Record<string, unknown> & {
-            audio?: {
-              enabled?: boolean;
-              mode?: string;
-              global_url?: string;
-              subuh_url?: string;
-              per_prayer_urls?: Record<string, string>;
-              fallback_to_system_sound?: boolean;
-            };
             prayers?: string[];
             enabled?: boolean;
             minutes_before?: number;
@@ -260,22 +92,6 @@ export default function TimeSettingsPage() {
           enabled: nc.enabled ?? false,
           minutes_before: nc.minutes_before ?? 10,
           prayers: nc.prayers ?? ['subuh', 'dzuhur', 'ashar', 'maghrib', 'isya'],
-          audio: {
-            enabled: nc.audio?.enabled ?? false,
-            mode: nc.audio?.mode === 'single_url' || nc.audio?.mode === 'per_prayer'
-              ? nc.audio.mode
-              : 'default',
-            global_url: nc.audio?.global_url ?? '',
-            subuh_url: nc.audio?.subuh_url ?? '',
-            per_prayer_urls: {
-              subuh: nc.audio?.per_prayer_urls?.subuh ?? '',
-              dzuhur: nc.audio?.per_prayer_urls?.dzuhur ?? '',
-              ashar: nc.audio?.per_prayer_urls?.ashar ?? '',
-              maghrib: nc.audio?.per_prayer_urls?.maghrib ?? '',
-              isya: nc.audio?.per_prayer_urls?.isya ?? '',
-            },
-            fallback_to_system_sound: nc.audio?.fallback_to_system_sound ?? true,
-          },
         });
       }
     }
@@ -557,141 +373,6 @@ export default function TimeSettingsPage() {
                 💡 Notifikasi muncul otomatis di HP pengguna sesuai waktu shalat lokal mereka.
                 Pengguna memilih per-shalat di aplikasi, sedangkan dashboard ini mengatur default dan batas pilihan yang tersedia.
               </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-100 p-4 space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-700">Struktur Suara Adzan Custom</h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Menyiapkan konfigurasi audio dari dashboard untuk fase berikutnya.
-                    Saat ini aplikasi tetap memakai suara notif sistem agar background notification tetap stabil.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setNotifConfig(prev => ({
-                    ...prev,
-                    audio: { ...prev.audio, enabled: !prev.audio.enabled },
-                  }))}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-                    notifConfig.audio.enabled ? 'bg-green-500' : 'bg-slate-300'
-                  }`}
-                >
-                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
-                    notifConfig.audio.enabled ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
-                </button>
-              </div>
-
-              {notifConfig.audio.enabled && (
-                <>
-                  <div>
-                    <label className="text-sm font-medium text-slate-600 mb-2 block">
-                      Mode audio
-                    </label>
-                    <select
-                      value={notifConfig.audio.mode}
-                      onChange={(e) => setNotifConfig(prev => ({
-                        ...prev,
-                        audio: {
-                          ...prev.audio,
-                          mode: e.target.value as PrayerAdzanAudioConfig['mode'],
-                        },
-                      }))}
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    >
-                      <option value="default">Gunakan suara notif sistem</option>
-                      <option value="single_url">1 audio untuk semua shalat (URL / Upload)</option>
-                      <option value="per_prayer">Audio berbeda per shalat (URL / Upload)</option>
-                    </select>
-                  </div>
-
-                  {notifConfig.audio.mode === 'single_url' && (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium text-slate-600 mb-2 block">
-                          🕌 Audio adzan umum (Dzuhur, Ashar, Maghrib, Isya)
-                        </label>
-                        <AudioUrlInput
-                          label="Adzan Umum"
-                          value={notifConfig.audio.global_url}
-                          onChange={(url) => setNotifConfig(prev => ({
-                            ...prev,
-                            audio: { ...prev.audio, global_url: url },
-                          }))}
-                          placeholder="https://.../adzan.mp3 atau upload file"
-                        />
-                        <p className="text-xs text-slate-400 mt-1.5">
-                          Masukkan URL atau klik Upload untuk mengunggah file MP3 langsung.
-                        </p>
-                      </div>
-                      <div className="rounded-xl bg-amber-50 border border-amber-200 p-3">
-                        <label className="text-sm font-medium text-amber-800 mb-2 block">
-                          🌅 Audio adzan Subuh (berbeda dari adzan biasa)
-                        </label>
-                        <AudioUrlInput
-                          label="Adzan Subuh"
-                          value={notifConfig.audio.subuh_url}
-                          onChange={(url) => setNotifConfig(prev => ({
-                            ...prev,
-                            audio: { ...prev.audio, subuh_url: url },
-                          }))}
-                          placeholder="https://.../adzan-subuh.mp3 atau upload file"
-                          inputClassName="border-amber-300 focus:ring-amber-300/30"
-                        />
-                        <p className="text-xs text-amber-600 mt-1.5">
-                          Adzan Subuh memiliki melodi khas yang berbeda dari adzan 4 waktu lainnya. Kosongkan jika ingin menggunakan audio adzan umum.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {notifConfig.audio.mode === 'per_prayer' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {allPrayers.map(({ key, label, emoji }) => (
-                        <div key={key}>
-                          <label className="text-sm font-medium text-slate-600 mb-2 block">
-                            {emoji} {label}
-                          </label>
-                          <AudioUrlInput
-                            label={`Adzan ${label}`}
-                            value={notifConfig.audio.per_prayer_urls[key] ?? ''}
-                            onChange={(url) => setNotifConfig(prev => ({
-                              ...prev,
-                              audio: {
-                                ...prev.audio,
-                                per_prayer_urls: {
-                                  ...prev.audio.per_prayer_urls,
-                                  [key]: url,
-                                },
-                              },
-                            }))}
-                            placeholder={`URL atau upload ${label.toLowerCase()}.mp3`}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <label className="flex items-start gap-3 rounded-xl bg-slate-50 border border-slate-200 p-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={notifConfig.audio.fallback_to_system_sound}
-                      onChange={(e) => setNotifConfig(prev => ({
-                        ...prev,
-                        audio: {
-                          ...prev.audio,
-                          fallback_to_system_sound: e.target.checked,
-                        },
-                      }))}
-                      className="mt-1"
-                    />
-                    <span className="text-xs text-slate-600 leading-5">
-                      Jika URL audio belum siap atau gagal dipakai nanti, kembali ke suara notif sistem perangkat.
-                    </span>
-                  </label>
-                </>
-              )}
             </div>
           </div>
         )}

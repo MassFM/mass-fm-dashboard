@@ -12,10 +12,10 @@ interface ListenerRequest {
   user_name: string;
   user_phone?: string;
   user_location?: string;
-  title: string;
-  speaker?: string;
-  message?: string;
-  status: 'pending' | 'approved' | 'played' | 'rejected';
+  title_request: string;
+  detail_info?: string;
+  preferred_time?: string;
+  status: 'pending' | 'approved' | 'processed' | 'played' | 'rejected';
 }
 
 export default function ListenerRequests() {
@@ -65,15 +65,15 @@ export default function ListenerRequests() {
 
   const filteredRequests = requests.filter((r) => {
     const matchesSearch = r.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          r.speaker?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          r.message?.toLowerCase().includes(searchTerm.toLowerCase());
+                          r.title_request.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          r.detail_info?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch && (filterStatus === 'all' || r.status === filterStatus);
   });
 
 const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
     approved: 'bg-green-100 text-green-800',
+    processed: 'bg-blue-100 text-blue-800',
     played: 'bg-purple-100 text-purple-800',
     rejected: 'bg-red-100 text-red-800',
   } as const;
@@ -108,6 +108,7 @@ const statusColors = {
             <option value="all">Semua Status</option>
             <option value="pending">Pending</option>
             <option value="approved">Disetujui</option>
+            <option value="processed">Diproses</option>
             <option value="played">Diputar</option>
             <option value="rejected">Ditolak</option>
           </select>
@@ -144,13 +145,13 @@ const statusColors = {
           <div className="text-sm opacity-90">Disetujui</div>
           <div className="text-lg font-bold mt-1">{requests.filter(r => r.status === 'approved').length}</div>
         </div>
-        <div className="bg-gradient-to-br from-purple-400 to-purple-600 text-white p-6 rounded-2xl shadow-lg">
-          <div className="text-sm opacity-90">Diputar</div>
-          <div className="text-lg font-bold mt-1">{requests.filter(r => r.status === 'played').length}</div>
+        <div className="bg-gradient-to-br from-blue-400 to-blue-600 text-white p-6 rounded-2xl shadow-lg">
+          <div className="text-sm opacity-90">Diproses</div>
+          <div className="text-lg font-bold mt-1">{requests.filter(r => r.status === 'processed').length}</div>
         </div>
         <div className="bg-gradient-to-br from-red-400 to-red-500 text-white p-6 rounded-2xl shadow-lg">
           <div className="text-sm opacity-90">Ditolak</div>
-          <div className="text-3xl font-bold mt-1">{requests.filter(r => r.status === 'rejected').length}</div>
+          <div className="text-lg font-bold mt-1">{requests.filter(r => r.status === 'rejected').length}</div>
         </div>
       </div>
 
@@ -183,12 +184,11 @@ const statusColors = {
                     {request.user_location && <div className="text-xs text-slate-500">{request.user_location}</div>}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="font-semibold">{request.title}</div>
-                    {request.speaker && <div className="text-xs text-slate-500 font-semibold">{request.speaker}</div>}
+                    <div className="font-semibold">{request.title_request}</div>
                   </td>
                   <td className="px-6 py-4 max-w-xs">
-                    {request.message ? (
-                      <div className="text-sm text-slate-700 line-clamp-2">{request.message}</div>
+                    {request.detail_info ? (
+                      <div className="text-sm text-slate-700 line-clamp-2 whitespace-pre-line">{request.detail_info}</div>
                     ) : (
                       <span className="text-slate-400 text-sm">-</span>
                     )}
@@ -216,7 +216,7 @@ const statusColors = {
                       >
                         <option value="pending">Pending</option>
                         <option value="approved">Disetujui</option>
-                        <option value="played">Diputar</option>
+                        <option value="processed">Diproses</option>
                         <option value="rejected">Ditolak</option>
                       </select>
                       <button 
