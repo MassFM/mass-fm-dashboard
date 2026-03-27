@@ -366,59 +366,64 @@ export default function KajianOfflinePage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="relative">
-                    <input
-                      type="file"
-                      accept=".pdf"
-                      disabled={uploadingFile}
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        if (!file.name.toLowerCase().endsWith('.pdf')) {
-                          alert('Hanya file PDF yang diizinkan');
-                          return;
-                        }
-                        if (file.size > 50 * 1024 * 1024) {
-                          alert('Ukuran file maksimal 50MB');
-                          return;
-                        }
-                        setUploadingFile(true);
-                        try {
-                          await ensureBucket();
-                          const timestamp = Date.now();
-                          const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-                          const filePath = `kajian-materi/${timestamp}_${safeName}`;
-                          const { error: uploadError } = await supabase.storage
-                            .from(KAJIAN_BUCKET)
-                            .upload(filePath, file, { cacheControl: '3600', upsert: false });
-                          if (uploadError) throw uploadError;
-                          const { data: urlData } = supabase.storage
-                            .from(KAJIAN_BUCKET)
-                            .getPublicUrl(filePath);
-                          updateField('file_url', urlData.publicUrl);
-                        } catch (err: unknown) {
-                          const msg = err instanceof Error ? err.message : String(err);
-                          alert('Gagal upload: ' + msg);
-                        } finally {
-                          setUploadingFile(false);
-                          e.target.value = '';
-                        }
-                      }}
-                      className="hidden"
-                      id="file-upload-materi"
-                    />
-                    <label htmlFor="file-upload-materi"
-                      className={`flex items-center justify-center gap-2 w-full px-3 py-3 border-2 border-dashed rounded-xl text-sm cursor-pointer transition-colors ${
-                        uploadingFile
-                          ? 'border-purple-300 bg-purple-50 text-purple-400'
-                          : 'border-slate-200 hover:border-purple-300 hover:bg-purple-50 text-slate-400 hover:text-purple-500'
-                      }`}>
-                      {uploadingFile ? (
-                        <><Loader2 size={16} className="animate-spin" /> Mengupload...</>
-                      ) : (
-                        <><Upload size={16} /> Pilih File PDF</>
-                      )}
-                    </label>
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        disabled={uploadingFile}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (!file.name.toLowerCase().endsWith('.pdf')) {
+                            alert('Hanya file PDF yang diizinkan');
+                            return;
+                          }
+                          if (file.size > 50 * 1024 * 1024) {
+                            alert('Ukuran file maksimal 50MB');
+                            return;
+                          }
+                          setUploadingFile(true);
+                          try {
+                            await ensureBucket();
+                            const timestamp = Date.now();
+                            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                            const filePath = `kajian-materi/${timestamp}_${safeName}`;
+                            const { error: uploadError } = await supabase.storage
+                              .from(KAJIAN_BUCKET)
+                              .upload(filePath, file, { cacheControl: '3600', upsert: false });
+                            if (uploadError) throw uploadError;
+                            const { data: urlData } = supabase.storage
+                              .from(KAJIAN_BUCKET)
+                              .getPublicUrl(filePath);
+                            updateField('file_url', urlData.publicUrl);
+                          } catch (err: unknown) {
+                            const msg = err instanceof Error ? err.message : String(err);
+                            alert('Gagal upload: ' + msg);
+                          } finally {
+                            setUploadingFile(false);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="hidden"
+                        id="file-upload-materi"
+                      />
+                      <label htmlFor="file-upload-materi"
+                        className={`flex items-center justify-center gap-2 w-full px-3 py-3 border-2 border-dashed rounded-xl text-sm cursor-pointer transition-colors ${
+                          uploadingFile
+                            ? 'border-purple-300 bg-purple-50 text-purple-400'
+                            : 'border-slate-200 hover:border-purple-300 hover:bg-purple-50 text-slate-400 hover:text-purple-500'
+                        }`}>
+                        {uploadingFile ? (
+                          <><Loader2 size={16} className="animate-spin" /> Mengupload...</>
+                        ) : (
+                          <><Upload size={16} /> Pilih File PDF</>
+                        )}
+                      </label>
+                    </div>
+                    <input type="url" value={form.file_url} onChange={e => updateField('file_url', e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none"
+                      placeholder="Atau masukkan URL file PDF: https://..." />
                   </div>
                 )}
               </div>
