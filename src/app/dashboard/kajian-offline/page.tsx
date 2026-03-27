@@ -61,6 +61,23 @@ const DEFAULT_KATEGORI = ['Aqidah','Fiqh','Tafsir','Hadits','Sirah','Adab & Akhl
 
 const AUDIENCE_OPTIONS = ['Umum','Ikhwan','Akhwat'];
 
+const KAJIAN_BUCKET = 'kajian-files';
+let bucketReady = false;
+
+async function ensureBucket() {
+  if (bucketReady) return;
+  const { data: buckets } = await supabase.storage.listBuckets();
+  if (!buckets?.find(b => b.id === KAJIAN_BUCKET)) {
+    const { error } = await supabase.storage.createBucket(KAJIAN_BUCKET, {
+      public: true,
+      fileSizeLimit: 52428800, // 50MB
+      allowedMimeTypes: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+    });
+    if (error && !error.message?.includes('already exists')) throw error;
+  }
+  bucketReady = true;
+}
+
 export default function KajianOfflinePage() {
   const [data, setData] = useState<KajianOffline[]>([]);
   const [loading, setLoading] = useState(true);
@@ -364,15 +381,16 @@ export default function KajianOfflinePage() {
                         }
                         setUploadingFile(true);
                         try {
+                          await ensureBucket();
                           const timestamp = Date.now();
                           const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
                           const filePath = `kajian-materi/${timestamp}_${safeName}`;
                           const { error: uploadError } = await supabase.storage
-                            .from('kajian-files')
+                            .from(KAJIAN_BUCKET)
                             .upload(filePath, file, { cacheControl: '3600', upsert: false });
                           if (uploadError) throw uploadError;
                           const { data: urlData } = supabase.storage
-                            .from('kajian-files')
+                            .from(KAJIAN_BUCKET)
                             .getPublicUrl(filePath);
                           updateField('file_url', urlData.publicUrl);
                         } catch (err: unknown) {
@@ -454,16 +472,17 @@ export default function KajianOfflinePage() {
                           }
                           setUploadingImage(true);
                           try {
+                            await ensureBucket();
                             const timestamp = Date.now();
                             const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
                             const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.[^.]+$/, '');
                             const filePath = `kajian-images/${timestamp}_${safeName}.${ext}`;
                             const { error: uploadError } = await supabase.storage
-                              .from('kajian-files')
+                              .from(KAJIAN_BUCKET)
                               .upload(filePath, file, { cacheControl: '31536000', upsert: false });
                             if (uploadError) throw uploadError;
                             const { data: urlData } = supabase.storage
-                              .from('kajian-files')
+                              .from(KAJIAN_BUCKET)
                               .getPublicUrl(filePath);
                             updateField('image_url', urlData.publicUrl);
                           } catch (err: unknown) {
