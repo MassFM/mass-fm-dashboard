@@ -66,14 +66,17 @@ let bucketReady = false;
 
 async function ensureBucket() {
   if (bucketReady) return;
-  const { data: buckets } = await supabase.storage.listBuckets();
-  if (!buckets?.find(b => b.id === KAJIAN_BUCKET)) {
-    const { error } = await supabase.storage.createBucket(KAJIAN_BUCKET, {
-      public: true,
-      fileSizeLimit: 52428800, // 50MB
-      allowedMimeTypes: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-    });
-    if (error && !error.message?.includes('already exists')) throw error;
+  try {
+    const { data: buckets } = await supabase.storage.listBuckets();
+    if (buckets && !buckets.find(b => b.id === KAJIAN_BUCKET)) {
+      await supabase.storage.createBucket(KAJIAN_BUCKET, {
+        public: true,
+        fileSizeLimit: 52428800,
+        allowedMimeTypes: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+      });
+    }
+  } catch {
+    // Bucket sudah dibuat via SQL atau anon key tidak punya akses admin — lanjutkan upload
   }
   bucketReady = true;
 }
