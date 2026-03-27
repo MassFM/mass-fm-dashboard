@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Pencil, Trash2, MapPin, Phone, BookOpen, Radio, X, Map, Tag, Users, Loader2, Copy, Upload, FileText } from 'lucide-react';
+import { Plus, Pencil, Trash2, MapPin, Phone, BookOpen, Radio, X, Map, Tag, Users, Loader2, Copy, Upload, FileText, Image } from 'lucide-react';
 
 interface KajianOffline {
   id?: string;
@@ -70,6 +70,7 @@ export default function KajianOfflinePage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [kategoriOptions, setKategoriOptions] = useState<string[]>(DEFAULT_KATEGORI);
   const [kategoriMode, setKategoriMode] = useState<'select'|'add'|'manage'>('select');
   const [newKategori, setNewKategori] = useState('');
@@ -401,9 +402,99 @@ export default function KajianOfflinePage() {
                 )}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">URL Gambar</label>
-                <input type="url" value={form.image_url} onChange={e => updateField('image_url', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none" placeholder="https://..." />
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Gambar Kajian</label>
+                {form.image_url ? (
+                  <div className="flex items-center gap-2 p-2.5 bg-blue-50 border border-blue-200 rounded-xl">
+                    <Image size={18} className="text-blue-600 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-blue-700 truncate">
+                        {form.image_url.split('/').pop()?.split('?')[0] || 'gambar'}
+                      </p>
+                      <a href={form.image_url} target="_blank" rel="noopener noreferrer"
+                        className="text-[10px] text-blue-500 hover:text-blue-700 underline truncate block">
+                        Lihat gambar
+                      </a>
+                    </div>
+                    <button type="button" onClick={async () => {
+                      if (!confirm('Hapus gambar ini?')) return;
+                      try {
+                        const url = new URL(form.image_url);
+                        const pathParts = url.pathname.split('/storage/v1/object/public/');
+                        if (pathParts.length > 1) {
+                          const fullPath = pathParts[1];
+                          const bucketAndPath = fullPath.split('/');
+                          const bucket = bucketAndPath[0];
+                          const filePath = bucketAndPath.slice(1).join('/');
+                          await supabase.storage.from(bucket).remove([filePath]);
+                        }
+                      } catch {}
+                      updateField('image_url', '');
+                    }}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="relative mb-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={uploadingImage}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (!file.type.startsWith('image/')) {
+                            alert('Hanya file gambar yang diizinkan');
+                            return;
+                          }
+                          if (file.size > 10 * 1024 * 1024) {
+                            alert('Ukuran gambar maksimal 10MB');
+                            return;
+                          }
+                          setUploadingImage(true);
+                          try {
+                            const timestamp = Date.now();
+                            const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+                            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.[^.]+$/, '');
+                            const filePath = `kajian-images/${timestamp}_${safeName}.${ext}`;
+                            const { error: uploadError } = await supabase.storage
+                              .from('kajian-files')
+                              .upload(filePath, file, { cacheControl: '31536000', upsert: false });
+                            if (uploadError) throw uploadError;
+                            const { data: urlData } = supabase.storage
+                              .from('kajian-files')
+                              .getPublicUrl(filePath);
+                            updateField('image_url', urlData.publicUrl);
+                          } catch (err: unknown) {
+                            const msg = err instanceof Error ? err.message : String(err);
+                            alert('Gagal upload gambar: ' + msg);
+                          } finally {
+                            setUploadingImage(false);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="hidden"
+                        id="file-upload-image"
+                      />
+                      <label htmlFor="file-upload-image"
+                        className={`flex items-center justify-center gap-2 w-full px-3 py-3 border-2 border-dashed rounded-xl text-sm cursor-pointer transition-colors ${
+                          uploadingImage
+                            ? 'border-blue-300 bg-blue-50 text-blue-400'
+                            : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50 text-slate-400 hover:text-blue-500'
+                        }`}>
+                        {uploadingImage ? (
+                          <><Loader2 size={16} className="animate-spin" /> Mengupload...</>
+                        ) : (
+                          <><Upload size={16} /> Upload Gambar</>
+                        )}
+                      </label>
+                    </div>
+                    <input type="url" value={form.image_url} onChange={e => updateField('image_url', e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-200 outline-none"
+                      placeholder="Atau masukkan URL gambar: https://..." />
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Provinsi</label>
