@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Pencil, Trash2, Save, X, Search, Star, BookOpen, FileText, Download, Loader2, Image as ImageIcon, Tag, Eye, EyeOff, ArrowUpDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, X, Search, Star, BookOpen, FileText, Download, Loader2, Image as ImageIcon, Tag, Eye, EyeOff, ArrowUpDown, Upload } from 'lucide-react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = (supabase as any);
@@ -39,6 +39,26 @@ const DEFAULT_KATEGORI = [
 
 type TabFilter = 'all' | 'active' | 'featured' | 'inactive';
 
+const EBOOK_BUCKET = 'kajian-files';
+let ebookBucketReady = false;
+
+async function ensureEbookBucket() {
+  if (ebookBucketReady) return;
+  try {
+    const { data: buckets } = await supabase.storage.listBuckets();
+    if (buckets && !buckets.find(b => b.id === EBOOK_BUCKET)) {
+      await supabase.storage.createBucket(EBOOK_BUCKET, {
+        public: true,
+        fileSizeLimit: 52428800,
+        allowedMimeTypes: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+      });
+    }
+  } catch {
+    // Bucket sudah dibuat via SQL — lanjutkan upload
+  }
+  ebookBucketReady = true;
+}
+
 export default function EbooksPage() {
   const [data, setData] = useState<EbookItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +73,8 @@ export default function EbooksPage() {
   const [kategoriMode, setKategoriMode] = useState<'select' | 'add'>('select');
   const [newKategori, setNewKategori] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'title' | 'downloads'>('newest');
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   // ── Fetch data ──
 
@@ -458,38 +480,209 @@ export default function EbooksPage() {
                 )}
               </div>
 
-              {/* File URL (PDF) */}
+              {/* File PDF */}
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-1 block">
-                  <FileText size={12} className="inline mr-1" /> URL File PDF *
+                  <FileText size={12} className="inline mr-1" /> File PDF Ebook *
                 </label>
-                <input type="url" value={form.file_url}
-                  onChange={e => setForm({ ...form, file_url: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  placeholder="https://mnjthnylygqxxgymakse.supabase.co/storage/v1/object/public/ebook-files/..." />
-                <p className="text-[10px] text-gray-400 mt-1">
-                  Upload PDF ke Supabase Storage bucket &quot;ebook-files&quot;, lalu paste URL-nya di sini
-                </p>
-              </div>
-
-              {/* Thumbnail URL */}
-              <div>
-                <label className="text-xs font-semibold text-gray-500 mb-1 block">
-                  <ImageIcon size={12} className="inline mr-1" /> URL Cover / Thumbnail
-                </label>
-                <input type="url" value={form.thumbnail_url}
-                  onChange={e => setForm({ ...form, thumbnail_url: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  placeholder="https://mnjthnylygqxxgymakse.supabase.co/storage/v1/object/public/ebook-covers/..." />
-                {form.thumbnail_url && (
-                  <div className="mt-2 rounded-xl overflow-hidden border border-gray-100 inline-block">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={form.thumbnail_url} alt="preview" className="h-32 object-cover" />
+                {form.file_url ? (
+                  <div className="flex items-center gap-2 p-2.5 bg-green-50 border border-green-200 rounded-xl">
+                    <FileText size={18} className="text-green-600 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-green-700 truncate">
+                        {form.file_url.split('/').pop()?.split('?')[0] || 'file.pdf'}
+                      </p>
+                      <a href={form.file_url} target="_blank" rel="noopener noreferrer"
+                        className="text-[10px] text-green-500 hover:text-green-700 underline truncate block">
+                        Lihat file
+                      </a>
+                    </div>
+                    <button type="button" onClick={async () => {
+                      if (!confirm('Hapus file PDF ini?')) return;
+                      try {
+                        const url = new URL(form.file_url);
+                        const pathParts = url.pathname.split('/storage/v1/object/public/');
+                        if (pathParts.length > 1) {
+                          const fullPath = pathParts[1];
+                          const bucketAndPath = fullPath.split('/');
+                          const bucket = bucketAndPath[0];
+                          const filePath = bucketAndPath.slice(1).join('/');
+                          await supabase.storage.from(bucket).remove([filePath]);
+                        }
+                      } catch {}
+                      setForm(prev => ({ ...prev, file_url: '', file_size_mb: 0 }));
+                    }}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="relative mb-2">
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        disabled={uploadingPdf}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (!file.name.toLowerCase().endsWith('.pdf')) {
+                            alert('Hanya file PDF yang diizinkan');
+                            return;
+                          }
+                          if (file.size > 50 * 1024 * 1024) {
+                            alert('Ukuran file maksimal 50MB');
+                            return;
+                          }
+                          setUploadingPdf(true);
+                          try {
+                            await ensureEbookBucket();
+                            const timestamp = Date.now();
+                            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                            const filePath = `ebook-pdf/${timestamp}_${safeName}`;
+                            const { error: uploadError } = await supabase.storage
+                              .from(EBOOK_BUCKET)
+                              .upload(filePath, file, { cacheControl: '31536000', upsert: false });
+                            if (uploadError) throw uploadError;
+                            const { data: urlData } = supabase.storage
+                              .from(EBOOK_BUCKET)
+                              .getPublicUrl(filePath);
+                            const sizeMb = parseFloat((file.size / (1024 * 1024)).toFixed(2));
+                            setForm(prev => ({ ...prev, file_url: urlData.publicUrl, file_size_mb: sizeMb }));
+                          } catch (err: unknown) {
+                            const msg = err instanceof Error ? err.message : String(err);
+                            alert('Gagal upload PDF: ' + msg);
+                          } finally {
+                            setUploadingPdf(false);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="hidden"
+                        id="ebook-upload-pdf"
+                      />
+                      <label htmlFor="ebook-upload-pdf"
+                        className={`flex items-center justify-center gap-2 w-full px-3 py-3 border-2 border-dashed rounded-xl text-sm cursor-pointer transition-colors ${
+                          uploadingPdf
+                            ? 'border-green-300 bg-green-50 text-green-400'
+                            : 'border-gray-200 hover:border-green-300 hover:bg-green-50 text-gray-400 hover:text-green-500'
+                        }`}>
+                        {uploadingPdf ? (
+                          <><Loader2 size={16} className="animate-spin" /> Mengupload PDF...</>
+                        ) : (
+                          <><Upload size={16} /> Upload File PDF</>
+                        )}
+                      </label>
+                    </div>
+                    <input type="url" value={form.file_url}
+                      onChange={e => setForm({ ...form, file_url: e.target.value })}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      placeholder="Atau masukkan URL file PDF: https://..." />
                   </div>
                 )}
-                <p className="text-[10px] text-gray-400 mt-1">
-                  Upload cover ke Supabase Storage bucket &quot;ebook-covers&quot;
-                </p>
+              </div>
+
+              {/* Cover / Thumbnail */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">
+                  <ImageIcon size={12} className="inline mr-1" /> Cover / Thumbnail
+                </label>
+                {form.thumbnail_url ? (
+                  <div className="flex items-center gap-3 p-2.5 bg-blue-50 border border-blue-200 rounded-xl">
+                    <div className="w-16 h-20 rounded-lg overflow-hidden bg-white border border-blue-100 shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={form.thumbnail_url} alt="cover" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-blue-700 truncate">
+                        {form.thumbnail_url.split('/').pop()?.split('?')[0] || 'cover'}
+                      </p>
+                      <a href={form.thumbnail_url} target="_blank" rel="noopener noreferrer"
+                        className="text-[10px] text-blue-500 hover:text-blue-700 underline truncate block">
+                        Lihat gambar
+                      </a>
+                    </div>
+                    <button type="button" onClick={async () => {
+                      if (!confirm('Hapus cover ini?')) return;
+                      try {
+                        const url = new URL(form.thumbnail_url);
+                        const pathParts = url.pathname.split('/storage/v1/object/public/');
+                        if (pathParts.length > 1) {
+                          const fullPath = pathParts[1];
+                          const bucketAndPath = fullPath.split('/');
+                          const bucket = bucketAndPath[0];
+                          const filePath = bucketAndPath.slice(1).join('/');
+                          await supabase.storage.from(bucket).remove([filePath]);
+                        }
+                      } catch {}
+                      setForm(prev => ({ ...prev, thumbnail_url: '' }));
+                    }}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="relative mb-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={uploadingCover}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (!file.type.startsWith('image/')) {
+                            alert('Hanya file gambar yang diizinkan');
+                            return;
+                          }
+                          if (file.size > 10 * 1024 * 1024) {
+                            alert('Ukuran gambar maksimal 10MB');
+                            return;
+                          }
+                          setUploadingCover(true);
+                          try {
+                            await ensureEbookBucket();
+                            const timestamp = Date.now();
+                            const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+                            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.[^.]+$/, '');
+                            const filePath = `ebook-covers/${timestamp}_${safeName}.${ext}`;
+                            const { error: uploadError } = await supabase.storage
+                              .from(EBOOK_BUCKET)
+                              .upload(filePath, file, { cacheControl: '31536000', upsert: false });
+                            if (uploadError) throw uploadError;
+                            const { data: urlData } = supabase.storage
+                              .from(EBOOK_BUCKET)
+                              .getPublicUrl(filePath);
+                            setForm(prev => ({ ...prev, thumbnail_url: urlData.publicUrl }));
+                          } catch (err: unknown) {
+                            const msg = err instanceof Error ? err.message : String(err);
+                            alert('Gagal upload cover: ' + msg);
+                          } finally {
+                            setUploadingCover(false);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="hidden"
+                        id="ebook-upload-cover"
+                      />
+                      <label htmlFor="ebook-upload-cover"
+                        className={`flex items-center justify-center gap-2 w-full px-3 py-3 border-2 border-dashed rounded-xl text-sm cursor-pointer transition-colors ${
+                          uploadingCover
+                            ? 'border-blue-300 bg-blue-50 text-blue-400'
+                            : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-400 hover:text-blue-500'
+                        }`}>
+                        {uploadingCover ? (
+                          <><Loader2 size={16} className="animate-spin" /> Mengupload Cover...</>
+                        ) : (
+                          <><Upload size={16} /> Upload Cover / Thumbnail</>
+                        )}
+                      </label>
+                    </div>
+                    <input type="url" value={form.thumbnail_url}
+                      onChange={e => setForm({ ...form, thumbnail_url: e.target.value })}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      placeholder="Atau masukkan URL gambar: https://..." />
+                  </div>
+                )}
               </div>
 
               {/* Deskripsi */}
@@ -542,18 +735,6 @@ export default function EbooksPage() {
                   onChange={e => setForm({ ...form, sort_order: parseInt(e.target.value) || 0 })}
                   className="w-24 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                 <p className="text-[10px] text-gray-400 mt-1">Angka lebih kecil tampil lebih atas</p>
-              </div>
-
-              {/* Info Box */}
-              <div className="bg-teal-50 rounded-xl p-4 text-xs text-teal-800">
-                <p className="font-bold mb-1">📋 Panduan Upload Ebook:</p>
-                <ol className="list-decimal list-inside space-y-1 text-teal-700">
-                  <li>Buka Supabase Dashboard → Storage</li>
-                  <li>Upload file PDF ke bucket <strong>ebook-files</strong></li>
-                  <li>Upload cover/thumbnail ke bucket <strong>ebook-covers</strong></li>
-                  <li>Copy URL publik lalu paste ke form di atas</li>
-                  <li>Isi total halaman dan ukuran file untuk info di aplikasi</li>
-                </ol>
               </div>
             </div>
 
