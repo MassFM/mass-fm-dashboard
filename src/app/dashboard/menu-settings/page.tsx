@@ -26,9 +26,13 @@ const ICON_OPTIONS = [
   { value: 'download', label: '⬇️ Download' },
   { value: 'share', label: '📤 Share' },
   { value: 'notifications', label: '🔔 Notifikasi' },
-  { value: 'compass', label: '🧭 Kompas' },
-  { value: 'prayer', label: '🕐 Shalat' },
-  { value: 'quran', label: '📚 Quran' },
+  { value: 'compass', label: '🧭 Kompas/Kiblat' },
+  { value: 'prayer', label: '🕐 Waktu Shalat' },
+  { value: 'quran', label: '📚 Quran/Ebook' },
+  { value: 'record_voice_over', label: '🎙️ Mimbar/Dakwah' },
+  { value: 'school', label: '🏫 Kajian' },
+  { value: 'event', label: '📣 Kegiatan/Event' },
+  { value: 'card_giftcard', label: '🎴 Kartu Ucapan' },
 ];
 
 const ROUTE_OPTIONS = [
@@ -38,6 +42,13 @@ const ROUTE_OPTIONS = [
   { value: 'schedule', label: 'Halaman Jadwal' },
   { value: 'chat', label: 'Halaman Live Chat' },
   { value: 'school_info', label: 'Halaman Info Sekolah' },
+  { value: 'ebook', label: 'Halaman Ebook' },
+  { value: 'mimbar', label: 'Halaman Mimbar Dakwah' },
+  { value: 'kajian_offline', label: 'Halaman Kajian Rutin' },
+  { value: 'events', label: 'Halaman Kegiatan Islami' },
+  { value: 'prayer_times', label: 'Halaman Waktu Shalat' },
+  { value: 'qiblat', label: 'Halaman Arah Kiblat' },
+  { value: 'greeting_card', label: 'Halaman Kartu Ucapan' },
 ];
 
 const DEFAULT_BUTTONS: CustomButton[] = [

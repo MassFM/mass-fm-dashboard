@@ -35,6 +35,7 @@ export default function DoaPage() {
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [categoryInput, setCategoryInput] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
 
   // Compute dynamic categories from existing data + defaults
   const allCategories = Array.from(new Set([
@@ -131,6 +132,30 @@ export default function DoaPage() {
       alert('Gagal upload gambar');
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowedTypes = ['audio/mpeg', 'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'audio/ogg', 'audio/wav'];
+    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(mp3|m4a|ogg|wav)$/i)) {
+      alert('File harus berupa audio (mp3, m4a, ogg, wav)');
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) { alert('Ukuran file audio maksimal 20MB'); return; }
+    setUploadingAudio(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const fileName = `doa-audio/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('doa-images').upload(fileName, file, { cacheControl: '3600', upsert: false });
+      if (uploadError) { alert('Gagal upload audio: ' + uploadError.message); return; }
+      const { data: urlData } = supabase.storage.from('doa-images').getPublicUrl(fileName);
+      setForm({ ...form, audio_url: urlData.publicUrl });
+    } catch (err) {
+      alert('Gagal upload audio');
+    } finally {
+      setUploadingAudio(false);
     }
   };
 
@@ -324,21 +349,44 @@ export default function DoaPage() {
                   rows={2} className="w-full px-4 py-3 rounded-xl border border-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Catatan tambahan (opsional)" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">Audio URL</label>
-                <div className="flex gap-2">
-                  <input value={form.audio_url || ''} onChange={(e) => setForm({ ...form, audio_url: e.target.value })}
-                    className="flex-1 px-4 py-3 rounded-xl border border-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="https://... (link audio mp3)" />
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">Audio Doa</label>
+                <div className="flex gap-2 items-start">
+                  <div className="flex-1">
+                    <input value={form.audio_url || ''} onChange={(e) => setForm({ ...form, audio_url: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="URL audio atau upload file..." />
+                  </div>
+                  <label className={`px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition ${uploadingAudio ? 'bg-slate-100 text-slate-400' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                    {uploadingAudio ? (
+                      <span className="animate-spin">⏳</span>
+                    ) : (
+                      <Upload size={14} />
+                    )}
+                    {uploadingAudio ? 'Uploading...' : 'Upload'}
+                    <input type="file" accept="audio/*,.mp3,.m4a,.ogg,.wav" className="hidden" onChange={handleAudioUpload} disabled={uploadingAudio} />
+                  </label>
                   {form.audio_url && (
                     <button type="button" onClick={() => {
                       const audio = new Audio(form.audio_url!);
                       audio.play().catch(() => alert('Gagal memutar audio'));
                       setTimeout(() => audio.pause(), 5000);
-                    }} className="px-3 py-2 rounded-xl bg-green-50 text-green-600 text-xs font-semibold hover:bg-green-100 transition">
+                    }} className="px-3 py-2.5 rounded-xl bg-green-50 text-green-600 text-xs font-semibold hover:bg-green-100 transition">
                       🎧 Test
                     </button>
                   )}
+                  {form.audio_url && (
+                    <button type="button" onClick={() => setForm({ ...form, audio_url: '' })}
+                      className="px-2 py-2.5 rounded-xl bg-red-50 text-red-400 hover:bg-red-100 transition">
+                      <X size={14} />
+                    </button>
+                  )}
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">Masukkan URL audio (mp3/m4a) dari storage atau link publik</p>
+                {form.audio_url && (
+                  <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-green-50/50 rounded-lg border border-green-100">
+                    <span className="text-green-500">🎧</span>
+                    <p className="text-[11px] text-green-700 truncate flex-1">{form.audio_url.split('/').pop()}</p>
+                  </div>
+                )}
+                <p className="text-[10px] text-slate-400 mt-1">Upload file audio (mp3/m4a, maks 20MB) atau masukkan URL langsung</p>
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-500 mb-1 block">Background Image (Doa Pilihan)</label>
