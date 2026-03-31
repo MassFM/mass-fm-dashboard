@@ -42,10 +42,8 @@ export default function NotificationSettingsPage() {
   };
 
   const fetchTodaySchedules = async () => {
-    // Gunakan waktu WIB (UTC+7) untuk menentukan tanggal hari ini
-    const now = new Date();
-    const wibDate = new Date(now.getTime() + (7 * 60 + now.getTimezoneOffset()) * 60000);
-    const today = wibDate.toISOString().split('T')[0];
+    // Gunakan timezone WIB (Asia/Jakarta) untuk menentukan tanggal hari ini
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
     const { data } = await supabase
       .from('schedules')
       .select('judul, program, pemateri, jam')

@@ -16,14 +16,15 @@ export default function KelolaJadwal() {
   const [liveProgramId, setLiveProgramId] = useState<number | null>(null);
 
   // --- STATE NAVIGASI HARI ---
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const getTodayWIB = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+  const [selectedDate, setSelectedDate] = useState(getTodayWIB);
 
   // State Form & Edit Mode
   const [editingId, setEditingId] = useState<number | null>(null);
   const [judul, setJudul] = useState('');
   const [program, setProgram] = useState('');
   const [pemateri, setPemateri] = useState('');
-  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+  const [formDate, setFormDate] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }));
   const [description, setDescription] = useState('');
   const [kitabName, setKitabName] = useState('');
   const [fileUrl, setFileUrl] = useState('');
@@ -194,7 +195,7 @@ export default function KelolaJadwal() {
     setJudul(item.judul);
     setProgram(item.program);
     setPemateri(item.pemateri);
-    setFormDate(item.date || new Date().toISOString().split('T')[0]);
+    setFormDate(item.date || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }));
     setDescription((item as any).description || '');
     setKitabName((item as any).kitab_name || '');
     setFileUrl((item as any).file_url || '');
@@ -203,10 +204,10 @@ export default function KelolaJadwal() {
     setResumeHtml((item as any).resume_html || '');
     setCategory((item as any).category || '');
     
-    const splitJam = item.jam.split(' - ');
+    const splitJam = item.jam.replace(/\./g, ':').split(' - ');
     if (splitJam.length === 2) {
-      setJamMulai(splitJam[0]);
-      setJamSelesai(splitJam[1]);
+      setJamMulai(splitJam[0].trim());
+      setJamSelesai(splitJam[1].trim());
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -215,7 +216,7 @@ export default function KelolaJadwal() {
     setEditingId(null);
     setJudul(''); setProgram(''); setPemateri('');
     setJamMulai('08:00'); setJamSelesai('09:00');
-    setFormDate(new Date().toISOString().split('T')[0]);
+    setFormDate(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }));
     setDescription(''); setKitabName(''); setFileUrl('');
     setYoutubeUrl(''); setRecordingUrl('');
     setResumeHtml('');
