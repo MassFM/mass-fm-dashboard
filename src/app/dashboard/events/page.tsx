@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Pencil, Trash2, Save, X, Search, Star, MapPin, Calendar, Clock, Users, Loader2, ExternalLink, Image as ImageIcon, Tag } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, X, Search, Star, MapPin, Calendar, Clock, Users, Loader2, ExternalLink, Image as ImageIcon, Tag, Upload, FileText, Map } from 'lucide-react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = (supabase as any);
@@ -25,10 +25,13 @@ interface EventItem {
   kota: string;
   latitude: number | null;
   longitude: number | null;
+  map_url: string;
   pemateri: string;
   contact_person: string;
   contact_phone: string;
   registration_url: string;
+  file_url: string;
+  audience: string;
   is_featured: boolean;
   is_free: boolean;
   is_active: boolean;
@@ -40,7 +43,9 @@ const emptyForm: EventItem = {
   tanggal_mulai: '', tanggal_selesai: '', jam_mulai: '08:00', jam_selesai: '12:00',
   tempat: '', alamat: '', provinsi: '', kota: '',
   latitude: null, longitude: null,
+  map_url: '',
   pemateri: '', contact_person: '', contact_phone: '', registration_url: '',
+  file_url: '', audience: 'Umum',
   is_featured: false, is_free: true, is_active: true, sort_order: 0,
 };
 
@@ -48,6 +53,11 @@ const DEFAULT_KATEGORI = [
   'Kajian Akbar', 'Tabligh Akbar', 'Seminar', 'Workshop',
   'Daurah', 'Bakti Sosial', 'Santunan', 'Lomba',
 ];
+
+const AUDIENCE_OPTIONS = ['Umum', 'Ikhwan', 'Akhwat'];
+
+// Gunakan bucket kajian-files yang sudah ada (support PDF + gambar, 50MB)
+const EVENTS_BUCKET = 'kajian-files';
 
 type TabFilter = 'all' | 'upcoming' | 'ongoing' | 'past';
 
@@ -64,8 +74,10 @@ export default function EventsPage() {
   const [kategoriOptions, setKategoriOptions] = useState<string[]>(DEFAULT_KATEGORI);
   const [kategoriMode, setKategoriMode] = useState<'select'|'add'>('select');
   const [newKategori, setNewKategori] = useState('');
+  const [uploadingPoster, setUploadingPoster] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
-  // ── Fetch data ──
+  // -- Fetch data --
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -87,7 +99,7 @@ export default function EventsPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // ── Save ──
+  // -- Save --
 
   const handleSave = async () => {
     if (!form.title.trim() || !form.tanggal_mulai) {
@@ -112,7 +124,7 @@ export default function EventsPage() {
     fetchData();
   };
 
-  // ── Delete ──
+  // -- Delete --
 
   const handleDelete = async (id: number) => {
     await db.from('events').delete().eq('id', id);
@@ -120,15 +132,15 @@ export default function EventsPage() {
     fetchData();
   };
 
-  // ── Edit ──
+  // -- Edit --
 
   const startEdit = (item: EventItem) => {
-    setForm({ ...item });
+    setForm({ ...emptyForm, ...item, map_url: item.map_url || '', file_url: item.file_url || '', audience: item.audience || 'Umum' });
     setEditingId(item.id!);
     setShowForm(true);
   };
 
-  // ── Filter logic ──
+  // -- Filter logic --
 
   const now = new Date();
   const today = now.toISOString().split('T')[0];
@@ -155,7 +167,7 @@ export default function EventsPage() {
     return true;
   });
 
-  // ── Tab counts ──
+  // -- Tab counts --
 
   const upcomingCount = data.filter(d => d.tanggal_mulai > today).length;
   const ongoingCount = data.filter(d => {
@@ -167,7 +179,7 @@ export default function EventsPage() {
     return end < today;
   }).length;
 
-  // ── Status badge helper ──
+  // -- Status badge helper --
 
   const getStatus = (item: EventItem) => {
     const end = item.tanggal_selesai || item.tanggal_mulai;
@@ -181,7 +193,7 @@ export default function EventsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Event & Acara</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Event &amp; Acara</h1>
           <p className="text-sm text-gray-400 mt-1">
             Kelola event kajian akbar, tabligh, seminar, dan acara lainnya
           </p>
@@ -267,6 +279,12 @@ export default function EventsPage() {
                               {item.kategori}
                             </span>
                           )}
+                          {item.audience && item.audience !== 'Umum' && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-50 text-teal-700">
+                              <Users size={10} className="inline mr-1" />
+                              {item.audience}
+                            </span>
+                          )}
                           {item.is_featured && (
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700">
                               <Star size={10} className="inline mr-1" />Featured
@@ -297,7 +315,7 @@ export default function EventsPage() {
                           <span className="flex items-center gap-1">
                             <Calendar size={12} />
                             {item.tanggal_mulai}
-                            {item.tanggal_selesai && item.tanggal_selesai !== item.tanggal_mulai && ` — ${item.tanggal_selesai}`}
+                            {item.tanggal_selesai && item.tanggal_selesai !== item.tanggal_mulai && `  ${item.tanggal_selesai}`}
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock size={12} /> {item.jam_mulai} - {item.jam_selesai}
@@ -306,6 +324,18 @@ export default function EventsPage() {
                             <span className="flex items-center gap-1">
                               <MapPin size={12} /> {item.tempat}{item.kota ? `, ${item.kota}` : ''}
                             </span>
+                          )}
+                          {item.map_url && (
+                            <a href={item.map_url} target="_blank" rel="noreferrer"
+                               className="flex items-center gap-1 text-primary hover:underline">
+                              <Map size={12} /> Google Maps
+                            </a>
+                          )}
+                          {item.file_url && (
+                            <a href={item.file_url} target="_blank" rel="noreferrer"
+                               className="flex items-center gap-1 text-primary hover:underline">
+                              <FileText size={12} /> File Materi
+                            </a>
                           )}
                           {item.registration_url && (
                             <a href={item.registration_url} target="_blank" rel="noreferrer"
@@ -349,7 +379,7 @@ export default function EventsPage() {
         </div>
       )}
 
-      {/* ═══ FORM MODAL ═══ */}
+      {/* === FORM MODAL === */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-6 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl my-8">
@@ -382,7 +412,7 @@ export default function EventsPage() {
                     <select value={form.kategori}
                       onChange={e => setForm({ ...form, kategori: e.target.value })}
                       className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                      <option value="">— Pilih Kategori —</option>
+                      <option value="">-- Pilih Kategori --</option>
                       {kategoriOptions.map(k => <option key={k} value={k}>{k}</option>)}
                     </select>
                     <button onClick={() => setKategoriMode('add')}
@@ -417,6 +447,18 @@ export default function EventsPage() {
                   onChange={e => setForm({ ...form, pemateri: e.target.value })}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   placeholder="Ust. ..." />
+              </div>
+
+              {/* Audience */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">
+                  <Users size={12} className="inline mr-1" /> Audience / Peserta
+                </label>
+                <select value={form.audience}
+                  onChange={e => setForm({ ...form, audience: e.target.value })}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                  {AUDIENCE_OPTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
               </div>
 
               {/* Tanggal & Waktu */}
@@ -473,42 +515,211 @@ export default function EventsPage() {
                   placeholder="Jl. ..." />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Provinsi</label>
-                  <input type="text" value={form.provinsi}
-                    onChange={e => setForm({ ...form, provinsi: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                    placeholder="Jawa Tengah" />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Latitude / Longitude</label>
-                  <div className="flex gap-2">
-                    <input type="number" step="any" value={form.latitude ?? ''}
-                      onChange={e => setForm({ ...form, latitude: e.target.value ? parseFloat(e.target.value) : null })}
-                      className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm"
-                      placeholder="Lat" />
-                    <input type="number" step="any" value={form.longitude ?? ''}
-                      onChange={e => setForm({ ...form, longitude: e.target.value ? parseFloat(e.target.value) : null })}
-                      className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm"
-                      placeholder="Lng" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Poster URL */}
+              {/* Link Google Maps */}
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-1 block">
-                  <ImageIcon size={12} className="inline mr-1" /> URL Poster
+                  <Map size={12} className="inline mr-1" /> Link Google Maps
                 </label>
-                <input type="url" value={form.poster_url}
-                  onChange={e => setForm({ ...form, poster_url: e.target.value })}
+                <input type="url" value={form.map_url}
+                  onChange={e => setForm({ ...form, map_url: e.target.value })}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  placeholder="https://..." />
-                {form.poster_url && (
-                  <div className="mt-2 rounded-xl overflow-hidden border border-gray-100 max-h-40">
+                  placeholder="https://maps.google.com/..." />
+              </div>
+
+              {/* Poster */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">
+                  <ImageIcon size={12} className="inline mr-1" /> Poster Event
+                </label>
+                {form.poster_url ? (
+                  <div className="flex items-center gap-2 p-2.5 bg-blue-50 border border-blue-200 rounded-xl">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={form.poster_url} alt="preview" className="w-full h-40 object-cover" />
+                    <img src={form.poster_url} alt="poster" className="w-12 h-12 object-cover rounded-lg flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-blue-700 truncate">
+                        {form.poster_url.split('/').pop()?.split('?')[0] || 'poster'}
+                      </p>
+                      <a href={form.poster_url} target="_blank" rel="noopener noreferrer"
+                        className="text-[10px] text-blue-500 hover:text-blue-700 underline truncate block">
+                        Lihat gambar
+                      </a>
+                    </div>
+                    <button type="button" onClick={async () => {
+                      if (!confirm('Hapus poster ini?')) return;
+                      try {
+                        const url = new URL(form.poster_url);
+                        const pathParts = url.pathname.split('/storage/v1/object/public/');
+                        if (pathParts.length > 1) {
+                          const bucketAndPath = pathParts[1].split('/');
+                          const bucket = bucketAndPath[0];
+                          const filePath = bucketAndPath.slice(1).join('/');
+                          await supabase.storage.from(bucket).remove([filePath]);
+                        }
+                      } catch { /* ignore */ }
+                      setForm(prev => ({ ...prev, poster_url: '' }));
+                    }}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={uploadingPoster}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (!file.type.startsWith('image/')) {
+                            alert('Hanya file gambar yang diizinkan');
+                            return;
+                          }
+                          if (file.size > 10 * 1024 * 1024) {
+                            alert('Ukuran gambar maksimal 10MB');
+                            return;
+                          }
+                          setUploadingPoster(true);
+                          try {
+                            const timestamp = Date.now();
+                            const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+                            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.[^.]+$/, '');
+                            const filePath = `event-posters/${timestamp}_${safeName}.${ext}`;
+                            const { error: uploadError } = await supabase.storage
+                              .from(EVENTS_BUCKET)
+                              .upload(filePath, file, { cacheControl: '31536000', upsert: false });
+                            if (uploadError) throw uploadError;
+                            const { data: urlData } = supabase.storage
+                              .from(EVENTS_BUCKET)
+                              .getPublicUrl(filePath);
+                            setForm(prev => ({ ...prev, poster_url: urlData.publicUrl }));
+                          } catch (err: unknown) {
+                            const msg = err instanceof Error ? err.message : String(err);
+                            alert('Gagal upload poster: ' + msg);
+                          } finally {
+                            setUploadingPoster(false);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="hidden"
+                        id="upload-poster"
+                      />
+                      <label htmlFor="upload-poster"
+                        className={`flex items-center justify-center gap-2 w-full px-3 py-3 border-2 border-dashed rounded-xl text-sm cursor-pointer transition-colors ${
+                          uploadingPoster
+                            ? 'border-blue-300 bg-blue-50 text-blue-400'
+                            : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-400 hover:text-blue-500'
+                        }`}>
+                        {uploadingPoster ? (
+                          <><Loader2 size={16} className="animate-spin" /> Mengupload poster...</>
+                        ) : (
+                          <><Upload size={16} /> Upload Poster</>
+                        )}
+                      </label>
+                    </div>
+                    <input type="url" value={form.poster_url}
+                      onChange={e => setForm({ ...form, poster_url: e.target.value })}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      placeholder="Atau masukkan URL poster: https://..." />
+                  </div>
+                )}
+              </div>
+
+              {/* File Materi PDF */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">
+                  <FileText size={12} className="inline mr-1" /> File Materi (PDF)
+                </label>
+                {form.file_url ? (
+                  <div className="flex items-center gap-2 p-2.5 bg-green-50 border border-green-200 rounded-xl">
+                    <FileText size={18} className="text-green-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-green-700 truncate">
+                        {form.file_url.split('/').pop()?.split('?')[0] || 'file.pdf'}
+                      </p>
+                      <a href={form.file_url} target="_blank" rel="noopener noreferrer"
+                        className="text-[10px] text-green-500 hover:text-green-700 underline truncate block">
+                        Lihat file
+                      </a>
+                    </div>
+                    <button type="button" onClick={async () => {
+                      if (!confirm('Hapus file materi ini?')) return;
+                      try {
+                        const url = new URL(form.file_url);
+                        const pathParts = url.pathname.split('/storage/v1/object/public/');
+                        if (pathParts.length > 1) {
+                          const bucketAndPath = pathParts[1].split('/');
+                          const bucket = bucketAndPath[0];
+                          const filePath = bucketAndPath.slice(1).join('/');
+                          await supabase.storage.from(bucket).remove([filePath]);
+                        }
+                      } catch { /* ignore */ }
+                      setForm(prev => ({ ...prev, file_url: '' }));
+                    }}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        disabled={uploadingFile}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (!file.name.toLowerCase().endsWith('.pdf')) {
+                            alert('Hanya file PDF yang diizinkan');
+                            return;
+                          }
+                          if (file.size > 50 * 1024 * 1024) {
+                            alert('Ukuran file maksimal 50MB');
+                            return;
+                          }
+                          setUploadingFile(true);
+                          try {
+                            const timestamp = Date.now();
+                            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                            const filePath = `event-materi/${timestamp}_${safeName}`;
+                            const { error: uploadError } = await supabase.storage
+                              .from(EVENTS_BUCKET)
+                              .upload(filePath, file, { cacheControl: '3600', upsert: false });
+                            if (uploadError) throw uploadError;
+                            const { data: urlData } = supabase.storage
+                              .from(EVENTS_BUCKET)
+                              .getPublicUrl(filePath);
+                            setForm(prev => ({ ...prev, file_url: urlData.publicUrl }));
+                          } catch (err: unknown) {
+                            const msg = err instanceof Error ? err.message : String(err);
+                            alert('Gagal upload: ' + msg);
+                          } finally {
+                            setUploadingFile(false);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="hidden"
+                        id="upload-file-materi"
+                      />
+                      <label htmlFor="upload-file-materi"
+                        className={`flex items-center justify-center gap-2 w-full px-3 py-3 border-2 border-dashed rounded-xl text-sm cursor-pointer transition-colors ${
+                          uploadingFile
+                            ? 'border-green-300 bg-green-50 text-green-400'
+                            : 'border-gray-200 hover:border-green-300 hover:bg-green-50 text-gray-400 hover:text-green-500'
+                        }`}>
+                        {uploadingFile ? (
+                          <><Loader2 size={16} className="animate-spin" /> Mengupload...</>
+                        ) : (
+                          <><Upload size={16} /> Pilih File PDF</>
+                        )}
+                      </label>
+                    </div>
+                    <input type="url" value={form.file_url}
+                      onChange={e => setForm({ ...form, file_url: e.target.value })}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      placeholder="Atau masukkan URL file PDF: https://..." />
                   </div>
                 )}
               </div>
