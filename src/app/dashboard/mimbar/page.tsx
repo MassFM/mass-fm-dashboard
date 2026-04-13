@@ -192,7 +192,8 @@ function MateriTab() {
       .from('mimbar_materials')
       .select('*')
       .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
     setList(data || []);
     setLoading(false);
   }, []);
@@ -646,29 +647,21 @@ function ImportTab() {
 
   const fetchPending = useCallback(async () => {
     setLoading(true);
-    // Supabase default limit = 1000, fetch semua dengan pagination
-    let allData: PendingMaterial[] = [];
-    let from = 0;
-    const batchSize = 1000;
-    let hasMore = true;
+    // Server-side pagination: hanya ambil halaman yang ditampilkan
+    // Exclude raw_content dari listing untuk mengurangi egress
+    const from = (pendingPage - 1) * ITEMS_PER_PAGE;
+    const to = from + ITEMS_PER_PAGE - 1;
 
-    while (hasMore) {
-      const { data } = await supabase
-        .from('pending_materials')
-        .select('*')
-        .eq('source_site', 'khotbahjumat.com')
-        .order('created_at', { ascending: false })
-        .range(from, from + batchSize - 1);
+    const { data, count } = await supabase
+      .from('pending_materials')
+      .select('id, source_url, source_site, raw_title, status, category, language, notes, created_at, updated_at, published_id', { count: 'exact' })
+      .eq('source_site', 'khotbahjumat.com')
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
-      const rows = (data as PendingMaterial[]) || [];
-      allData = [...allData, ...rows];
-      hasMore = rows.length === batchSize;
-      from += batchSize;
-    }
-
-    setPending(allData);
+    setPending((data as PendingMaterial[]) || []);
     setLoading(false);
-  }, []);
+  }, [pendingPage]);
 
   useEffect(() => { fetchPending(); }, [fetchPending]);
 
@@ -761,9 +754,15 @@ function ImportTab() {
   };
 
   // ── Open approve modal ──
-  const openApproveModal = (item: PendingMaterial) => {
+  const openApproveModal = async (item: PendingMaterial) => {
     const notes = parseNotes(item.notes);
-    setApproveItem(item);
+    // Fetch raw_content on-demand (tidak disertakan di listing untuk hemat egress)
+    let fullItem = item;
+    if (!item.raw_content) {
+      const { data } = await supabase.from('pending_materials').select('raw_content').eq('id', item.id).single();
+      if (data) fullItem = { ...item, raw_content: data.raw_content };
+    }
+    setApproveItem(fullItem);
     setApproveForm({
       title: item.raw_title,
       category: item.category || 'khutbah_jumat',
@@ -829,17 +828,9 @@ function ImportTab() {
     }
   };
 
-  // ── Filter ──
-  const filteredPending = pending.filter((item) =>
-    filterStatus === 'all' ? true : item.status === filterStatus
-  );
-
-  // Pagination
-  const totalFilteredPages = Math.ceil(filteredPending.length / ITEMS_PER_PAGE);
-  const paginatedPending = filteredPending.slice(
-    (pendingPage - 1) * ITEMS_PER_PAGE,
-    pendingPage * ITEMS_PER_PAGE
-  );
+  // Server-side pagination — data sudah di-paginate dari fetchPending
+  const paginatedPending = pending;
+  const totalFilteredPages = Math.ceil(pending.length / ITEMS_PER_PAGE) || 1;
 
   const statusCounts = {
     all: pending.length,
@@ -918,7 +909,7 @@ function ImportTab() {
       {/* Pending List */}
       {loading ? (
         <div className="text-center py-20 text-slate-300">Memuat...</div>
-      ) : filteredPending.length === 0 ? (
+      ) : paginatedPending.length === 0 ? (
         <div className="text-center py-20">
           <Globe size={48} className="mx-auto text-slate-200 mb-4" />
           <p className="text-slate-400 text-sm">
@@ -963,11 +954,11 @@ function ImportTab() {
                     <p className="text-xs text-slate-400 mt-1">
                       ✍️ {notes.wp_author || 'Anonim'}
                       {notes.wp_date && ` · 📅 ${formatDate(notes.wp_date)}`}
-                      {` · ⏱️ ${calcReadingTime(item.raw_content)} mnt baca`}
+                      {item.raw_content ? ` · ⏱️ ${calcReadingTime(item.raw_content)} mnt baca` : ''}
                     </p>
-                    <p className="text-xs text-slate-400 mt-1 line-clamp-1">
+                    {item.raw_content && <p className="text-xs text-slate-400 mt-1 line-clamp-1">
                       {generateExcerpt(item.raw_content, 120)}
-                    </p>
+                    </p>}
                     <a href={item.source_url} target="_blank" rel="noopener noreferrer"
                       className="text-[10px] text-blue-400 hover:underline flex items-center gap-1 mt-1">
                       <ExternalLink size={9} /> {item.source_url}
@@ -1012,7 +1003,7 @@ function ImportTab() {
           {totalFilteredPages > 1 && (
             <div className="flex items-center justify-between pt-4">
               <p className="text-xs text-slate-400">
-                Menampilkan {(pendingPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(pendingPage * ITEMS_PER_PAGE, filteredPending.length)} dari {filteredPending.length} artikel
+                Menampilkan {(pendingPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(pendingPage * ITEMS_PER_PAGE, paginatedPending.length)} dari {paginatedPending.length} artikel
               </p>
               <div className="flex items-center gap-1">
                 <button

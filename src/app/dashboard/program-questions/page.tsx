@@ -20,20 +20,15 @@ export default function ProgramQuestionsPage() {
 
   useEffect(() => {
     fetchQuestions();
-    const channel = supabase
-      .channel('program_questions_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'program_questions' }, () => {
-        fetchQuestions();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    // Realtime subscription DIHAPUS untuk menghemat egress bandwidth
   }, []);
 
   const fetchQuestions = async () => {
     const { data, error } = await supabase
       .from('program_questions')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
     if (!error && data) setQuestions(data);
     setLoading(false);
   };

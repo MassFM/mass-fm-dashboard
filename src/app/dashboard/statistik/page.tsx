@@ -61,14 +61,16 @@ export default function StatistikPage() {
         .select('*', { count: 'exact', head: true })
         .like('event_type', 'listen_%');
 
-      // Total listen seconds
-      const { data: durationData } = await supabase
-        .from('listener_stats')
-        .select('duration_seconds')
-        .eq('event_type', 'listen_duration');
-      const totalSeconds = (durationData || []).reduce(
-        (acc, d) => acc + (d.duration_seconds || 0), 0
-      );
+      // Total listen seconds — gunakan RPC agar hanya 1 angka dikembalikan
+      // (sebelumnya menarik SELURUH baris duration_seconds ke client)
+      let totalSeconds = 0;
+      try {
+        const { data: rpcResult } = await supabase.rpc('get_total_listen_seconds');
+        totalSeconds = typeof rpcResult === 'number' ? rpcResult : 0;
+      } catch {
+        // Fallback jika RPC belum dibuat: gunakan head count saja
+        totalSeconds = 0;
+      }
 
       // FCM tokens count
       const { count: tokenCount } = await supabase
@@ -98,11 +100,13 @@ export default function StatistikPage() {
       });
 
       // Daily stats for bar chart (manual aggregation)
+      // Tambahkan limit sebagai safety net agar tidak menarik data tak terbatas
       const { data: periodData } = await supabase
         .from('listener_stats')
         .select('event_type, duration_seconds, created_at')
         .gte('created_at', startStr)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(5000);
 
       const dailyMap: Record<string, DailyStats> = {};
       for (const item of (periodData || [])) {

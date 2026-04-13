@@ -178,7 +178,8 @@ function MateriTab() {
       .from('konsultasi_materials')
       .select('*')
       .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
     setMaterials(data || []);
     setLoading(false);
   }, []);
@@ -414,38 +415,20 @@ function ImportTab() {
 
   const fetchPending = useCallback(async () => {
     setLoading(true);
-    // Build query
-    let query = supabase.from('pending_konsultasi').select('*', { count: 'exact' });
+    // Server-side pagination: hanya ambil halaman yang ditampilkan
+    // Exclude raw_content dari listing untuk hemat egress
+    const from = (page - 1) * ITEMS_PER_PAGE;
+    const to = from + ITEMS_PER_PAGE - 1;
+
+    let query = supabase.from('pending_konsultasi').select('id, source_url, source_site, raw_title, status, category, notes, created_at', { count: 'exact' });
     if (statusFilter) query = query.eq('status', statusFilter);
-    query = query.order('created_at', { ascending: false });
+    query = query.order('created_at', { ascending: false }).range(from, to);
 
-    // Fetch in batches (Supabase default 1000 rows)
-    const allRows: PendingKonsultasi[] = [];
-    let from = 0;
-    const batchSize = 1000;
-    let total = 0;
-
-    // First batch — get count too
-    const { data: firstBatch, count } = await query.range(from, from + batchSize - 1);
-    if (firstBatch) allRows.push(...(firstBatch as PendingKonsultasi[]));
-    total = count ?? allRows.length;
-
-    // Remaining batches
-    from += batchSize;
-    while (from < total) {
-      let batchQuery = supabase.from('pending_konsultasi').select('*');
-      if (statusFilter) batchQuery = batchQuery.eq('status', statusFilter);
-      batchQuery = batchQuery.order('created_at', { ascending: false });
-      const { data: batch } = await batchQuery.range(from, from + batchSize - 1);
-      if (batch && batch.length > 0) allRows.push(...(batch as PendingKonsultasi[]));
-      else break;
-      from += batchSize;
-    }
-
-    setPending(allRows);
-    setTotalPending(total);
+    const { data, count } = await query;
+    setPending((data as PendingKonsultasi[]) || []);
+    setTotalPending(count ?? 0);
     setLoading(false);
-  }, [statusFilter]);
+  }, [statusFilter, page]);
 
   useEffect(() => { fetchPending(); }, [fetchPending]);
 
@@ -499,16 +482,22 @@ function ImportTab() {
     setSyncing(false);
   };
 
-  const openApproveModal = (item: PendingKonsultasi) => {
+  const openApproveModal = async (item: PendingKonsultasi) => {
     const notes = parseNotes(item.notes);
+    // Fetch raw_content on-demand
+    let rawContent = item.raw_content || '';
+    if (!rawContent) {
+      const { data } = await supabase.from('pending_konsultasi').select('raw_content').eq('id', item.id).single();
+      if (data) rawContent = data.raw_content;
+    }
     setApproveForm({
       ...DEFAULT_FORM,
       title: item.raw_title,
-      content_html: item.raw_content,
-      excerpt: generateExcerpt(item.raw_content),
+      content_html: rawContent,
+      excerpt: generateExcerpt(rawContent),
       author: notes.wp_author || 'Anonim',
       category: item.category,
-      reading_time_minutes: calcReadingTime(item.raw_content),
+      reading_time_minutes: calcReadingTime(rawContent),
       thumbnail_url: notes.wp_thumbnail || '',
       source_url: item.source_url,
       tags: notes.wp_categories || [],
@@ -555,10 +544,9 @@ const handleApprove = async () => {
     fetchPending();
   };
 
-  // Pagination
+  // Server-side pagination — data sudah di-paginate dari fetchPending
   const totalPages = Math.ceil(totalPending / ITEMS_PER_PAGE);
-  const pageStart = (page - 1) * ITEMS_PER_PAGE;
-  const pageItems = pending.slice(pageStart, pageStart + ITEMS_PER_PAGE);
+  const pageItems = pending;
 
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];

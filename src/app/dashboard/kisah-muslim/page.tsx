@@ -339,7 +339,8 @@ function MateriTab({ categories, getCategoryLabel, getCategoryEmoji }: TabProps)
   const fetchMaterials = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase.from('kisah_muslim_materials').select('*')
-      .order('sort_order', { ascending: true }).order('created_at', { ascending: false });
+      .order('sort_order', { ascending: true }).order('created_at', { ascending: false })
+      .limit(200);
     setMaterials(data || []);
     setLoading(false);
   }, []);
@@ -531,30 +532,20 @@ function ImportTab({ categories, getCategoryLabel, getCategoryEmoji }: TabProps)
 
   const fetchPending = useCallback(async () => {
     setLoading(true);
-    let query = supabase.from('pending_kisah_muslim').select('*', { count: 'exact' });
+    // Server-side pagination: hanya ambil halaman yang ditampilkan
+    // Exclude raw_content dari listing untuk hemat egress
+    const from = (page - 1) * ITEMS_PER_PAGE;
+    const to = from + ITEMS_PER_PAGE - 1;
+
+    let query = supabase.from('pending_kisah_muslim').select('id, source_url, source_site, raw_title, status, category, notes, created_at', { count: 'exact' });
     if (statusFilter) query = query.eq('status', statusFilter);
-    query = query.order('created_at', { ascending: false });
-    const allRows: PendingKisah[] = [];
-    let from = 0;
-    const batchSize = 1000;
-    let total = 0;
-    const { data: firstBatch, count } = await query.range(from, from + batchSize - 1);
-    if (firstBatch) allRows.push(...(firstBatch as PendingKisah[]));
-    total = count ?? allRows.length;
-    from += batchSize;
-    while (from < total) {
-      let bq = supabase.from('pending_kisah_muslim').select('*');
-      if (statusFilter) bq = bq.eq('status', statusFilter);
-      bq = bq.order('created_at', { ascending: false });
-      const { data: batch } = await bq.range(from, from + batchSize - 1);
-      if (batch && batch.length > 0) allRows.push(...(batch as PendingKisah[]));
-      else break;
-      from += batchSize;
-    }
-    setPending(allRows);
-    setTotalPending(total);
+    query = query.order('created_at', { ascending: false }).range(from, to);
+
+    const { data, count } = await query;
+    setPending((data as PendingKisah[]) || []);
+    setTotalPending(count ?? 0);
     setLoading(false);
-  }, [statusFilter]);
+  }, [statusFilter, page]);
 
   useEffect(() => { fetchPending(); }, [fetchPending]);
 
@@ -597,12 +588,18 @@ function ImportTab({ categories, getCategoryLabel, getCategoryEmoji }: TabProps)
     setSyncing(false);
   };
 
-  const openApproveModal = (item: PendingKisah) => {
+  const openApproveModal = async (item: PendingKisah) => {
     const notes = parseNotes(item.notes);
+    // Fetch raw_content on-demand
+    let rawContent = item.raw_content || '';
+    if (!rawContent) {
+      const { data } = await supabase.from('pending_kisah_muslim').select('raw_content').eq('id', item.id).single();
+      if (data) rawContent = data.raw_content;
+    }
     setApproveForm({
-      ...DEFAULT_FORM, title: item.raw_title, content_html: item.raw_content,
-      excerpt: generateExcerpt(item.raw_content), author: notes.wp_author || 'Anonim',
-      category: item.category, reading_time_minutes: calcReadingTime(item.raw_content),
+      ...DEFAULT_FORM, title: item.raw_title, content_html: rawContent,
+      excerpt: generateExcerpt(rawContent), author: notes.wp_author || 'Anonim',
+      category: item.category, reading_time_minutes: calcReadingTime(rawContent),
       thumbnail_url: notes.wp_thumbnail || '', source_url: item.source_url,
       tags: notes.wp_categories || [],
     });
@@ -639,9 +636,9 @@ function ImportTab({ categories, getCategoryLabel, getCategoryEmoji }: TabProps)
     fetchPending();
   };
 
+  // Server-side pagination — data sudah di-paginate dari fetchPending
   const totalPages = Math.ceil(totalPending / ITEMS_PER_PAGE);
-  const pageStart = (page - 1) * ITEMS_PER_PAGE;
-  const pageItems = pending.slice(pageStart, pageStart + ITEMS_PER_PAGE);
+  const pageItems = pending;
 
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];

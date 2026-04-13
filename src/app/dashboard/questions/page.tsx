@@ -20,7 +20,8 @@ export default function QuestionsPage() {
       .from('questions')
       .select('*')
       .eq('status', filter)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
 
     if (error) {
       console.error('Error fetching questions:', error);

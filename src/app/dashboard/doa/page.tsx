@@ -45,7 +45,7 @@ export default function DoaPage() {
 
   const fetchDoa = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('daily_doas').select('*').order('created_at', { ascending: false });
+    const { data } = await supabase.from('daily_doas').select('*').order('created_at', { ascending: false }).limit(500);
     setDoaList(data || []);
     setLoading(false);
   }, []);

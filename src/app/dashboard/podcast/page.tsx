@@ -42,7 +42,8 @@ export default function PodcastPage() {
     const { data } = await supabase
       .from('podcasts')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
     setPodcasts(data || []);
     setLoading(false);
   };

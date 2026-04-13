@@ -27,25 +27,16 @@ export default function ListenerRequests() {
 
   useEffect(() => {
     fetchRequests();
-
-    // Realtime subscription
-    const channel = supabase
-      .channel('listener_requests')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'listener_requests' }, (payload) => {
-        fetchRequests();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Realtime subscription DIHAPUS untuk menghemat egress bandwidth
+    // Sebelumnya setiap perubahan di tabel memicu fetchRequests() yang menarik seluruh data
   }, []);
 
   const fetchRequests = async () => {
     let query = supabase
       .from('listener_requests')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
 
     if (filterStatus !== 'all') {
       query = query.eq('status', filterStatus);

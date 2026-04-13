@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -84,7 +84,8 @@ export default function EventsPage() {
     const { data: rows, error } = await db
       .from('events')
       .select('*')
-      .order('tanggal_mulai', { ascending: false });
+      .order('tanggal_mulai', { ascending: false })
+      .limit(200);
     if (!error && rows) {
       setData(rows);
       // Collect unique kategori from data

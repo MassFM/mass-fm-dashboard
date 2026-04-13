@@ -31,7 +31,8 @@ export default function TroubleReportsPage() {
     const { data } = await supabase
       .from('trouble_reports')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
     setReports(data || []);
     setLoading(false);
   }

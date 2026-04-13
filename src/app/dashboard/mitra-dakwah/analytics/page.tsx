@@ -23,7 +23,8 @@ export default function MitraDakwahAnalyticsPage() {
     const { data: adsData } = await supabase
       .from('ads')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     if (adsData) setAds(adsData as Ad[]);
 
@@ -36,7 +37,8 @@ export default function MitraDakwahAnalyticsPage() {
       .from('ad_analytics')
       .select('*')
       .gte('date', startStr)
-      .order('date', { ascending: true });
+      .order('date', { ascending: true })
+      .limit(1000);
 
     if (selectedAdId !== 'all') {
       query = query.eq('ad_id', selectedAdId);
