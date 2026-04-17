@@ -18,7 +18,7 @@ export default function QuestionsPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from('questions')
-      .select('*')
+      .select('id, created_at, nama_penanya, is_anonymous, lokasi, isi_pertanyaan, status')
       .eq('status', filter)
       .order('created_at', { ascending: false })
       .limit(200);

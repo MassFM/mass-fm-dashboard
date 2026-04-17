@@ -35,7 +35,7 @@ interface WPNotes {
 interface MimbarMaterial {
   id?: string;
   title: string;
-  content_html: string;
+  content_html?: string;
   excerpt: string;
   author: string;
   category: string;
@@ -188,9 +188,10 @@ function MateriTab() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    // Exclude content_html dari listing untuk menghemat egress (~30KB per record)
     const { data } = await supabase
       .from('mimbar_materials')
-      .select('*')
+      .select('id, title, excerpt, author, category, language, reading_time_minutes, thumbnail_url, pdf_url, source_url, tags, is_featured, is_active, sort_order, view_count, created_at')
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false })
       .limit(200);
@@ -204,10 +205,16 @@ function MateriTab() {
 
   const openAdd = () => { resetForm(); setShowModal(true); };
 
-  const openEdit = (item: MimbarMaterial) => {
-    setForm(item);
-    setEditId(item.id || null);
-    setTagsInput((item.tags || []).join(', '));
+  const openEdit = async (item: MimbarMaterial) => {
+    // Fetch content_html on-demand saat user klik Edit (hemat egress)
+    let fullItem = item;
+    if (!item.content_html) {
+      const { data } = await supabase.from('mimbar_materials').select('content_html').eq('id', item.id).single();
+      if (data) fullItem = { ...item, content_html: data.content_html };
+    }
+    setForm(fullItem);
+    setEditId(fullItem.id || null);
+    setTagsInput((fullItem.tags || []).join(', '));
     setShowModal(true);
   };
 
@@ -515,7 +522,7 @@ function MateriTab() {
               <div>
                 <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Konten</label>
                 <RichTextEditor
-                  content={form.content_html}
+                  content={form.content_html || ''}
                   onChange={(html) => setForm({ ...form, content_html: html })}
                   placeholder="Tulis isi khutbah / kultum / tausyiah di sini..."
                 />

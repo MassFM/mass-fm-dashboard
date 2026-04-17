@@ -16,7 +16,7 @@ export default function FeedbackPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from('feedbacks')
-      .select('*')
+      .select('id, rating, category, message, is_read, created_at')
       .order('created_at', { ascending: false })
       .limit(200);
 

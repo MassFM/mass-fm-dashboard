@@ -29,14 +29,9 @@ export default function ChatPage() {
 
   useEffect(() => {
     fetchMessages();
-    // Realtime subscription
-    const channel = supabase
-      .channel('chat_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, () => {
-        fetchMessages();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    // Realtime subscription DIHAPUS untuk menghemat egress bandwidth
+    // Sebelumnya setiap event di tabel memicu fetchMessages() yang menarik semua data
+    // User bisa klik tombol Refresh untuk memuat pesan baru
   }, []);
 
   const deleteMsg = async (id: number) => {

@@ -22,7 +22,7 @@ export default function MitraDakwahAnalyticsPage() {
     // Fetch all ads
     const { data: adsData } = await supabase
       .from('ads')
-      .select('*')
+      .select('id, title, client_name, image_url, package_type, created_at')
       .order('created_at', { ascending: false })
       .limit(100);
 
@@ -35,7 +35,7 @@ export default function MitraDakwahAnalyticsPage() {
 
     let query = supabase
       .from('ad_analytics')
-      .select('*')
+      .select('id, ad_id, date, views, clicks, unique_views')
       .gte('date', startStr)
       .order('date', { ascending: true })
       .limit(1000);

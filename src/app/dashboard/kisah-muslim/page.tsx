@@ -33,7 +33,7 @@ interface WPNotes {
 interface KisahMaterial {
   id?: string;
   title: string;
-  content_html: string;
+  content_html?: string;
   excerpt: string;
   author: string;
   category: string;
@@ -125,7 +125,7 @@ export default function KisahMuslimPage() {
   const fetchCategories = useCallback(async () => {
     const { data } = await supabase
       .from('kisah_muslim_categories')
-      .select('*')
+      .select('id, slug, name, emoji, is_active, sort_order')
       .order('sort_order', { ascending: true });
     setCategories(data || []);
   }, []);
@@ -338,7 +338,9 @@ function MateriTab({ categories, getCategoryLabel, getCategoryEmoji }: TabProps)
 
   const fetchMaterials = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('kisah_muslim_materials').select('*')
+    // Exclude content_html dari listing untuk menghemat egress (~30KB per record)
+    const { data } = await supabase.from('kisah_muslim_materials')
+      .select('id, title, excerpt, author, category, reading_time_minutes, thumbnail_url, source_url, tags, is_featured, is_active, sort_order, view_count, created_at')
       .order('sort_order', { ascending: true }).order('created_at', { ascending: false })
       .limit(200);
     setMaterials(data || []);
@@ -353,9 +355,9 @@ function MateriTab({ categories, getCategoryLabel, getCategoryEmoji }: TabProps)
     try {
       const payload = {
         title: form.title.trim(), content_html: form.content_html,
-        excerpt: form.excerpt || generateExcerpt(form.content_html),
+        excerpt: form.excerpt || generateExcerpt(form.content_html || ''),
         author: form.author.trim() || 'Anonim', category: form.category,
-        reading_time_minutes: form.reading_time_minutes || calcReadingTime(form.content_html),
+        reading_time_minutes: form.reading_time_minutes || calcReadingTime(form.content_html || ''),
         thumbnail_url: form.thumbnail_url, source_url: form.source_url,
         tags: form.tags, is_featured: form.is_featured, is_active: form.is_active, sort_order: form.sort_order,
       };
@@ -385,8 +387,14 @@ function MateriTab({ categories, getCategoryLabel, getCategoryEmoji }: TabProps)
     fetchMaterials();
   };
 
-  const handleEdit = (m: KisahMaterial) => {
-    setForm({ ...m }); setEditing(m.id!); setShowModal(true);
+  const handleEdit = async (m: KisahMaterial) => {
+    // Fetch content_html on-demand saat user klik Edit (hemat egress)
+    let fullItem = { ...m };
+    if (!m.content_html) {
+      const { data } = await supabase.from('kisah_muslim_materials').select('content_html').eq('id', m.id).single();
+      if (data) fullItem.content_html = data.content_html;
+    }
+    setForm(fullItem); setEditing(m.id!); setShowModal(true);
   };
 
   const filtered = materials.filter(m => {
@@ -474,7 +482,7 @@ function MateriTab({ categories, getCategoryLabel, getCategoryEmoji }: TabProps)
                 {categories.map(c => <option key={c.slug} value={c.slug}>{c.emoji} {c.name}</option>)}
               </select>
             </div>
-            <RichTextEditor content={form.content_html} onChange={(v) => setForm({ ...form, content_html: v })} />
+            <RichTextEditor content={form.content_html || ''} onChange={(v) => setForm({ ...form, content_html: v })} />
             <textarea placeholder="Excerpt (opsional)" value={form.excerpt} onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
               className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm" rows={2} />
             <div className="grid grid-cols-2 gap-3">
@@ -612,9 +620,9 @@ function ImportTab({ categories, getCategoryLabel, getCategoryEmoji }: TabProps)
     try {
       const { error } = await supabase.from('kisah_muslim_materials').upsert({
         title: approveForm.title, content_html: approveForm.content_html,
-        excerpt: approveForm.excerpt || generateExcerpt(approveForm.content_html),
+        excerpt: approveForm.excerpt || generateExcerpt(approveForm.content_html || ''),
         author: approveForm.author || 'Anonim', category: approveForm.category,
-        reading_time_minutes: approveForm.reading_time_minutes || calcReadingTime(approveForm.content_html),
+        reading_time_minutes: approveForm.reading_time_minutes || calcReadingTime(approveForm.content_html || ''),
         thumbnail_url: approveForm.thumbnail_url, source_url: approveForm.source_url,
         tags: approveForm.tags, is_featured: approveForm.is_featured, is_active: true, sort_order: 0,
       }, { onConflict: 'source_url' });
@@ -746,7 +754,7 @@ function ImportTab({ categories, getCategoryLabel, getCategoryEmoji }: TabProps)
                 {categories.map(c => <option key={c.slug} value={c.slug}>{c.emoji} {c.name}</option>)}
               </select>
             </div>
-            <RichTextEditor content={approveForm.content_html} onChange={(v) => setApproveForm({ ...approveForm, content_html: v })} />
+            <RichTextEditor content={approveForm.content_html || ''} onChange={(v) => setApproveForm({ ...approveForm, content_html: v })} />
             <div className="grid grid-cols-2 gap-3">
               <input type="text" placeholder="URL Thumbnail" value={approveForm.thumbnail_url} onChange={(e) => setApproveForm({ ...approveForm, thumbnail_url: e.target.value })} className="px-4 py-3 border border-slate-200 rounded-xl text-sm" />
               <input type="text" placeholder="Tags" value={approveForm.tags.join(', ')} onChange={(e) => setApproveForm({ ...approveForm, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })} className="px-4 py-3 border border-slate-200 rounded-xl text-sm" />

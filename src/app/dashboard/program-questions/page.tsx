@@ -26,7 +26,7 @@ export default function ProgramQuestionsPage() {
   const fetchQuestions = async () => {
     const { data, error } = await supabase
       .from('program_questions')
-      .select('*')
+      .select('id, program_name, sender_name, question, status, admin_reply, recording_url, is_recording_request, schedule_id, schedule_program, schedule_day, schedule_time, schedule_speaker, created_at')
       .order('created_at', { ascending: false })
       .limit(200);
     if (!error && data) setQuestions(data);

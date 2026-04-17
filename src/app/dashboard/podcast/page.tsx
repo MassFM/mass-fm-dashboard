@@ -41,7 +41,7 @@ export default function PodcastPage() {
     setLoading(true);
     const { data } = await supabase
       .from('podcasts')
-      .select('*')
+      .select('id, title, description, pemateri, category, audio_url, cover_url, duration_seconds, is_published, play_count, created_at')
       .order('created_at', { ascending: false })
       .limit(200);
     setPodcasts(data || []);

@@ -34,7 +34,7 @@ export default function ListenerRequests() {
   const fetchRequests = async () => {
     let query = supabase
       .from('listener_requests')
-      .select('*')
+      .select('id, created_at, request_type, user_name, user_phone, user_location, title_request, detail_info, preferred_time, status')
       .order('created_at', { ascending: false })
       .limit(200);
 

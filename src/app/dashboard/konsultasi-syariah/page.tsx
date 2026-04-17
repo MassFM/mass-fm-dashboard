@@ -33,7 +33,7 @@ interface WPNotes {
 interface KonsultasiMaterial {
   id?: string;
   title: string;
-  content_html: string;
+  content_html?: string;
   excerpt: string;
   author: string;
   category: string;
@@ -174,9 +174,10 @@ function MateriTab() {
 
   const fetchMaterials = useCallback(async () => {
     setLoading(true);
+    // Exclude content_html dari listing untuk menghemat egress (~30KB per record)
     const { data } = await supabase
       .from('konsultasi_materials')
-      .select('*')
+      .select('id, title, excerpt, author, category, reading_time_minutes, thumbnail_url, source_url, tags, is_featured, is_active, sort_order, view_count, created_at')
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false })
       .limit(200);
@@ -193,10 +194,10 @@ const handleSave = async () => {
     const payload = {
       title: form.title.trim(),
       content_html: form.content_html,
-      excerpt: form.excerpt || generateExcerpt(form.content_html),
+      excerpt: form.excerpt || generateExcerpt(form.content_html || ''),
       author: form.author.trim() || 'Anonim',
       category: form.category,
-      reading_time_minutes: form.reading_time_minutes || calcReadingTime(form.content_html),
+      reading_time_minutes: form.reading_time_minutes || calcReadingTime(form.content_html || ''),
       thumbnail_url: form.thumbnail_url,
       source_url: form.source_url,
       tags: form.tags,
@@ -231,8 +232,14 @@ const handleSave = async () => {
     fetchMaterials();
   };
 
-  const handleEdit = (m: KonsultasiMaterial) => {
-    setForm({ ...m });
+  const handleEdit = async (m: KonsultasiMaterial) => {
+    // Fetch content_html on-demand saat user klik Edit (hemat egress)
+    let fullItem = { ...m };
+    if (!m.content_html) {
+      const { data } = await supabase.from('konsultasi_materials').select('content_html').eq('id', m.id).single();
+      if (data) fullItem.content_html = data.content_html;
+    }
+    setForm(fullItem);
     setEditing(m.id!);
     setShowModal(true);
   };
@@ -350,7 +357,7 @@ const handleSave = async () => {
               </select>
             </div>
 
-            <RichTextEditor content={form.content_html} onChange={(v) => setForm({ ...form, content_html: v })} />
+            <RichTextEditor content={form.content_html || ''} onChange={(v) => setForm({ ...form, content_html: v })} />
 
             <textarea placeholder="Excerpt (opsional)" value={form.excerpt} onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
               className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm" rows={2} />
@@ -512,10 +519,10 @@ const handleApprove = async () => {
     const { error } = await supabase.from('konsultasi_materials').upsert({
       title: approveForm.title,
       content_html: approveForm.content_html,
-      excerpt: approveForm.excerpt || generateExcerpt(approveForm.content_html),
+      excerpt: approveForm.excerpt || generateExcerpt(approveForm.content_html || ''),
       author: approveForm.author || 'Anonim',
       category: approveForm.category,
-      reading_time_minutes: approveForm.reading_time_minutes || calcReadingTime(approveForm.content_html),
+      reading_time_minutes: approveForm.reading_time_minutes || calcReadingTime(approveForm.content_html || ''),
       thumbnail_url: approveForm.thumbnail_url,
       source_url: approveForm.source_url,
       tags: approveForm.tags,
@@ -690,7 +697,7 @@ const handleApprove = async () => {
               </select>
             </div>
 
-            <RichTextEditor content={approveForm.content_html} onChange={(v) => setApproveForm({ ...approveForm, content_html: v })} />
+            <RichTextEditor content={approveForm.content_html || ''} onChange={(v) => setApproveForm({ ...approveForm, content_html: v })} />
 
             <div className="grid grid-cols-2 gap-3">
               <input type="text" placeholder="URL Thumbnail" value={approveForm.thumbnail_url}
