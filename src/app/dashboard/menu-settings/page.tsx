@@ -33,6 +33,8 @@ const ICON_OPTIONS = [
   { value: 'school', label: '🏫 Kajian' },
   { value: 'event', label: '📣 Kegiatan/Event' },
   { value: 'card_giftcard', label: '🎴 Kartu Ucapan' },
+  { value: 'info', label: 'ℹ️ Info Terkini' },
+  { value: 'support_agent', label: '🙌 Dukung Aplikasi' },
 ];
 
 const ROUTE_OPTIONS = [
@@ -49,6 +51,8 @@ const ROUTE_OPTIONS = [
   { value: 'prayer_times', label: 'Halaman Waktu Shalat' },
   { value: 'qiblat', label: 'Halaman Arah Kiblat' },
   { value: 'greeting_card', label: 'Halaman Kartu Ucapan' },
+  { value: 'developer_support', label: '🙌 Dukung Aplikasi (Developer)' },
+  { value: 'url_external', label: '🔗 URL Eksternal (Website)' },
 ];
 
 const DEFAULT_BUTTONS: CustomButton[] = [
@@ -134,8 +138,8 @@ export default function MenuSettingsPage() {
   }
 
   function addButton() {
-    if (buttons.length >= 5) {
-      setMessage('⚠️ Maksimal 5 tombol menu');
+    if (buttons.length >= 6) {
+      setMessage('⚠️ Maksimal 6 tombol menu');
       return;
     }
     setButtons([...buttons, {
@@ -285,14 +289,29 @@ export default function MenuSettingsPage() {
                     Tujuan / Halaman
                   </label>
                   <select
-                    value={btn.route}
-                    onChange={(e) => updateButton(index, 'route', e.target.value)}
+                    value={btn.route.startsWith('http') ? 'url_external' : btn.route}
+                    onChange={(e) => {
+                      if (e.target.value === 'url_external') {
+                        updateButton(index, 'route', 'https://');
+                      } else {
+                        updateButton(index, 'route', e.target.value);
+                      }
+                    }}
                     className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary bg-white"
                   >
                     {ROUTE_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
+                  {btn.route.startsWith('http') && (
+                    <input
+                      type="url"
+                      value={btn.route}
+                      onChange={(e) => updateButton(index, 'route', e.target.value)}
+                      placeholder="https://contoh.com"
+                      className="w-full mt-2 px-3 py-2 border border-primary/40 rounded-xl text-sm focus:outline-none focus:border-primary bg-blue-50/50 font-mono"
+                    />
+                  )}
                 </div>
 
                 {/* Color */}
@@ -348,14 +367,14 @@ export default function MenuSettingsPage() {
         className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2 text-sm font-bold"
       >
         <Plus size={18} />
-        Tambah Tombol ({buttons.length}/5)
+        Tambah Tombol ({buttons.length}/6)
       </button>
 
       {/* Help */}
       <div className="bg-slate-50 rounded-2xl p-5 text-xs text-slate-400 space-y-2">
         <p className="font-bold text-slate-500">💡 Panduan:</p>
         <ul className="list-disc list-inside space-y-1">
-          <li>Maksimal <strong>5 tombol</strong> yang bisa ditambahkan</li>
+          <li>Maksimal <strong>6 tombol</strong> yang bisa ditambahkan</li>
           <li>Tombol yang dinonaktifkan tidak akan muncul di aplikasi</li>
           <li>Perubahan akan langsung diterapkan setelah Simpan (realtime via Supabase)</li>
           <li>Jika semua tombol dihapus, aplikasi akan menggunakan tombol default (Infaq, Dzikir, Doa)</li>
