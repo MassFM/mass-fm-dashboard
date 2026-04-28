@@ -16,6 +16,7 @@ interface RunningTextItem {
   fontStyle: string;
   fontFamily: string;
   route: string;
+  openInExternalBrowser: boolean;
 }
 
 interface RunningTextConfig {
@@ -35,6 +36,7 @@ const DEFAULT_ITEM: RunningTextItem = {
   fontStyle: 'normal',
   fontFamily: 'Inter',
   route: '',
+  openInExternalBrowser: false,
 };
 
 const DEFAULT_CONFIG: RunningTextConfig = {
@@ -123,6 +125,7 @@ export default function RunningTextPage() {
               fontStyle: parsed.fontStyle || DEFAULT_ITEM.fontStyle,
               fontFamily: parsed.fontFamily || DEFAULT_ITEM.fontFamily,
               route: parsed.route || '',
+              openInExternalBrowser: parsed.openInExternalBrowser ?? false,
             }]
           });
         }
@@ -436,7 +439,7 @@ export default function RunningTextPage() {
                     </select>
                     
                     {activeItem.route.startsWith('http') && (
-                      <div className="mt-3">
+                      <div className="mt-3 space-y-3">
                         <input
                           type="url"
                           value={activeItem.route}
@@ -444,6 +447,20 @@ export default function RunningTextPage() {
                           placeholder="https://contoh.com"
                           className="w-full px-4 py-3 border border-primary/40 rounded-xl text-sm focus:outline-none focus:border-primary bg-blue-50/50 font-mono"
                         />
+                        <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <button
+                            onClick={() => updateActiveField('openInExternalBrowser', !activeItem.openInExternalBrowser)}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                              activeItem.openInExternalBrowser ? 'bg-primary text-white' : 'bg-white text-slate-500 border border-slate-200'
+                            }`}
+                          >
+                            {activeItem.openInExternalBrowser ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                            {activeItem.openInExternalBrowser ? 'Ya' : 'Tidak'}
+                          </button>
+                          <span className="text-xs font-medium text-slate-500">
+                            Buka di luar aplikasi (Browser Eksternal)
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
