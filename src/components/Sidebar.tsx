@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Calendar, Image as ImageIcon, Heart, LogOut, Radio, MessageSquare, MessageCircleQuestion, Headphones, BarChart3, Bell, MapPin, Settings, MessageSquareDashed, MessageCircle, BookOpen, BookOpenCheck, CalendarClock, AlertTriangle, Share2, MessageSquareText, Moon, Menu, Clock, Star, Smartphone, Palette, Play, PartyPopper, FolderOpen, CalendarDays, FileImage, Megaphone, LineChart, FileText, Mic, MessageCircleHeart, GalleryHorizontalEnd, CalendarRange, School, Scale, BookHeart } from 'lucide-react';
-import { MessageSquarePlus, Power } from 'lucide-react';
+import { MessageSquarePlus, Power, Type } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -89,6 +89,7 @@ const menuGroups: MenuGroup[] = [
       { name: 'Tema Jadwal Siar', href: '/dashboard/schedule-theme', icon: CalendarRange },
       { name: 'Poster Jadwal', href: '/dashboard/poster-jadwal', icon: FileImage },
       { name: 'Teks Sapaan', href: '/dashboard/greeting-texts', icon: MessageCircleHeart },
+      { name: 'Running Text', href: '/dashboard/running-text', icon: Type },
       { name: 'Home Slides', href: '/dashboard/home-slides', icon: GalleryHorizontalEnd },
     ],
   },
