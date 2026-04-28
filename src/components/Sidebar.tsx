@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Calendar, Image as ImageIcon, Heart, LogOut, Radio, MessageSquare, MessageCircleQuestion, Headphones, BarChart3, Bell, MapPin, Settings, MessageSquareDashed, MessageCircle, BookOpen, BookOpenCheck, CalendarClock, AlertTriangle, Share2, MessageSquareText, Moon, Menu, Clock, Star, Smartphone, Palette, Play, PartyPopper, FolderOpen, CalendarDays, FileImage, Megaphone, LineChart, FileText, Mic, MessageCircleHeart, GalleryHorizontalEnd, CalendarRange, School, Scale, BookHeart } from 'lucide-react';
-import { MessageSquarePlus } from 'lucide-react';
+import { MessageSquarePlus, Power } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -98,6 +98,7 @@ const menuGroups: MenuGroup[] = [
       { name: 'Pengaturan Waktu', href: '/dashboard/time-settings', icon: Clock },
       { name: 'Share Settings', href: '/dashboard/share-settings', icon: Share2 },
       { name: 'Menu Settings', href: '/dashboard/menu-settings', icon: Menu },
+      { name: 'Kill Switch', href: '/dashboard/kill-switch', icon: Power },
     ],
   },
 ];
