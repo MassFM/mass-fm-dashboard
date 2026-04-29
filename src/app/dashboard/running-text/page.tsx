@@ -21,6 +21,7 @@ interface RunningTextItem {
 
 interface RunningTextConfig {
   enabled: boolean;
+  displayMode: string;
   items: RunningTextItem[];
 }
 
@@ -41,6 +42,7 @@ const DEFAULT_ITEM: RunningTextItem = {
 
 const DEFAULT_CONFIG: RunningTextConfig = {
   enabled: true,
+  displayMode: 'marquee',
   items: [DEFAULT_ITEM],
 };
 
@@ -108,11 +110,16 @@ export default function RunningTextPage() {
         
         // Backward compatibility handler
         if (parsed.items && Array.isArray(parsed.items)) {
-          setConfig({ enabled: parsed.enabled ?? true, items: parsed.items });
+          setConfig({ 
+            enabled: parsed.enabled ?? true, 
+            displayMode: parsed.displayMode || 'marquee',
+            items: parsed.items 
+          });
         } else {
           // Convert old format to array
           setConfig({
             enabled: parsed.enabled ?? true,
+            displayMode: parsed.displayMode || 'marquee',
             items: [{
               id: Date.now().toString(),
               text: parsed.text || DEFAULT_ITEM.text,
@@ -163,6 +170,7 @@ export default function RunningTextPage() {
       const dataToSave = {
         ...fallbackItem, // root properties for old app versions
         enabled: config.enabled,
+        displayMode: config.displayMode,
         items: config.items, // new property for updated app versions
       };
 
@@ -277,6 +285,35 @@ export default function RunningTextPage() {
           </button>
         </div>
         
+        {/* Pengaturan Tipe Tampilan */}
+        <div className="mb-6 bg-white p-4 rounded-xl border border-slate-200">
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+            Tipe Tampilan Widget
+          </label>
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={() => setConfig({ ...config, displayMode: 'marquee' })}
+              className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all border ${
+                config.displayMode === 'marquee' || !config.displayMode
+                  ? 'bg-primary/10 border-primary text-primary shadow-sm'
+                  : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
+              }`}
+            >
+              Teks Berjalan (Marquee)
+            </button>
+            <button
+              onClick={() => setConfig({ ...config, displayMode: 'quote' })}
+              className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all border ${
+                config.displayMode === 'quote'
+                  ? 'bg-primary/10 border-primary text-primary shadow-sm'
+                  : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
+              }`}
+            >
+              Kutipan Bergilir (Quotes Carousel)
+            </button>
+          </div>
+        </div>
+
         {/* Mockup Aplikasi */}
         <div className="max-w-md mx-auto bg-slate-50 border-[6px] border-slate-800 rounded-[2.5rem] p-4 shadow-xl relative overflow-hidden h-[120px]">
           {/* Status bar mockup */}
